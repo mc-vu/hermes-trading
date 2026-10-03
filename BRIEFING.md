@@ -2,6 +2,21 @@
 
 Owner: MCVu · Orchestrator: Jarvis · Stand: 03.10.2026 · Phase 0 = Recherche
 
+## Entscheidungen nach R1 (MCVu, 03.10.2026)
+1. Kursdaten: kostenloser Mix (Stooq, ECB, FRED, Binance/Kraken, Finnhub, Deutsche-Börse-Delayed). Kein Yahoo (AGB verbieten Automatik). Bezahlanbieter erst nach Freigabe.
+2. Papierhandel: interne Simulation wie Polymarket für alle Märkte. Broker-Paper (Alpaca) höchstens später als Gegenprobe.
+3. Politiker-, Insider- und 13F-Meldungen: Signal mit niedrigem Startgewicht. Das System misst selbst, ob sie taugen, und passt das Gewicht über versionierte Regeln an.
+4. Websuche: Exa (Hauptprofil) + Tavily (researcher), bereits eingerichtet.
+5. Echte Depots: Scalable Capital FREE (kein CSV-Export → von MCVu gepflegte Bestandsdatei `portfolio/private/holdings.csv`), Binance (offizielle API, Schlüssel nur lesen, ohne Handel/Auszahlung), Revolut Krypto (Export oder Bestandsdatei). Nur bewerten, nie handeln. Echte Bestände nie ins Repo.
+6. Offen: SEC-User-Agent-Kontaktadresse (vor T2), Briefing per LLM oder regelbasiert (vor T4).
+
+## Bauplan
+Stufe 1 Lagebild: T1 Gerüst+Kurse · T2 Ereignisquellen · T3 Depots · T4 Briefing (+T4b Fachprüfung finanzen)
+Stufe 2 Papierhandel: T5 Signale+Simulation · T6 Backtest+Lernen
+Stufe 3: T7 Dashboard-Seite „Trading“
+Vorlage für Struktur, Safety, Tests, CLI, Dashboard: `~/projects/hermes-polymarket` (Muster kopieren, nicht importieren).
+Plugin-Name: `hermes-trading`. Runtime-Python über `~/.local/bin/hermes-python`, nur Standardbibliothek. Smoke-Tests nur unter `.dev/smoke/`, kein `rm -rf`. Dashboard ist eine System-Unit: Neustart nur durch MCVu mit `sudo systemctl restart hermes-dashboard`.
+
 ## NEUAUSRICHTUNG 03.10.2026 (gilt vor allem darunter)
 US-Aktien, Alpaca und Politiker-Trades waren nur **Beispiele**. Das Projekt ist ein **allgemeines Markt-Lagebild mit Papierhandel**:
 - **Kern:** Lagebild/Briefing und Handelsbot sind **gleich gewichtet**.
