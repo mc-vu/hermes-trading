@@ -8,7 +8,7 @@ Owner: MCVu · Orchestrator: Jarvis · Stand: 03.10.2026 · Phase 0 = Recherche
 3. Politiker-, Insider- und 13F-Meldungen: Signal mit niedrigem Startgewicht. Das System misst selbst, ob sie taugen, und passt das Gewicht über versionierte Regeln an.
 4. Websuche: Exa (Hauptprofil) + Tavily (researcher), bereits eingerichtet.
 5. Echte Depots: Scalable Capital FREE (kein CSV-Export → von MCVu gepflegte Bestandsdatei `portfolio/private/holdings.csv`), Binance (offizielle API, Schlüssel nur lesen, ohne Handel/Auszahlung), Revolut Krypto (Export oder Bestandsdatei). Nur bewerten, nie handeln. Echte Bestände nie ins Repo.
-6. Offen: SEC-User-Agent-Kontaktadresse (vor T2), Briefing per LLM oder regelbasiert (vor T4).
+6. Briefing: schreibt das LLM (einmal täglich, `ctx.llm.complete`), regelbasierter Fallback bleibt. Ans LLM nur aggregierte Depotdaten (Prozente). Offen: SEC-User-Agent-Kontaktadresse (vor T2).
 
 ## Bauplan
 Stufe 1 Lagebild: T1 Gerüst+Kurse · T2 Ereignisquellen · T3 Depots · T4 Briefing (+T4b Fachprüfung finanzen)
