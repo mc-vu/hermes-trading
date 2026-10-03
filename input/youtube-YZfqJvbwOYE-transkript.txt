@@ -1,0 +1,61 @@
+0:011 SekundeAll right. Well, in this recording, we're [snorts] going to talk about how you can integrate clot code with Alpaka
+0:088 SekundenMCP server. So, you can start back testing your algorithmic trading
+0:1515 Sekundenstrategies and then eventually roll out into your alpaka real or paper account.
+0:2121 SekundenTo get started, um you need to have a cloud code subscription. Um I recommend starting with API based subscription and
+0:3030 Sekundenthen eventually moving to the monthly based or yearly based as per your need.
+0:3535 SekundenUm and then yeah go ahead and install cloud including git bash uh from the link that I will provide um towards
+0:4343 Sekunden[snorts] the end and then the next step is uh install visual studio code. Um and
+0:5050 Sekundenyeah for that uh after you have done that it's going to look like this. It's an ID for all your all your development
+0:5858 Sekundenright I I think most of the developer already know uh that yeah the third step is install cloud code
+1:061 Minute, 6 Sekundenextension for VS code um yeah so once you've opened uh visual studio code you can go ahead into extension and search
+1:141 Minute, 14 Sekundenfor cloud code for VS code and um yeah install it from there you will start noticing that there there is this splash
+1:221 Minute, 22 Sekundenicon appeared on on on your workbench and then you can start you can just click it and another window of clot code will open for you to start working on.
+1:331 Minute, 33 SekundenThe next step is you clone your own git repo. Uh we need to clone the git repo so that clot code has the context of all
+1:411 Minute, 41 Sekundenthe component and the structure and the format of your uh repository. So whenever you ask cloud code, hey I need
+1:501 Minute, 50 Sekundento build something, it will adhere to to your uh design and then um eventually build
+1:581 Minute, 58 Sekundenthe code as per as per your uh repository existing repository. Yeah.
+2:042 Minuten, 4 SekundenAnyway, uh but it's not it's not a must requirement. You can uh you know directly just start using cloud code without without cloning your git repo.
+2:152 Minuten, 15 SekundenAnyway, moving on.
+2:182 Minuten, 18 SekundenYou can add now once you have cloud code window open in front of you and it's working running uh you can just go ahead
+2:262 Minuten, 26 Sekundenand uh you know add the MCP server with with the command that you see on on my
+2:322 Minuten, 32 Sekundenscreen into this window and start uh the claw MCP server straight away just by providing your correct keys and secret.
+2:422 Minuten, 42 SekundenUm I will recommend though there is a safer way to do it and why we should use
+2:482 Minuten, 48 Sekundenthat way. My recommendation is to always export your keys into uh your environment variable and then
+2:562 Minuten, 56 Sekundenreferencing it as you go ahead using the alpa MCP server. Um you can notice that hey I've used test alpaka MCP server but
+3:063 Minuten, 6 Sekundenyou can actually use back slashmcp server to know whether the alpaka mcp server is integrated with your cloud
+3:133 Minuten, 13 Sekundencode or not. Anyway, um this does some certain test and yeah, [clears throat]
+3:213 Minuten, 21 Sekundenit was able to um let me know that hey uh this is connected and then once uh it
+3:303 Minuten, 30 Sekundengot connected I just asked for my account details and then it provided hey uh you can notice I've I've asked what are my account details and then it will
+3:393 Minuten, 39 Sekundenjust go ahead and start providing me with stuff like equity cash. Well, it's a it's paper account, so you can set up
+3:473 Minuten, 47 Sekundenany value. Um, uh, and then it went ahead and provided all the open positions in my account. It
+3:553 Minuten, 55 Sekundendid a pretty good job in doing that, right? Well, so your cloud code setup is
+4:034 Minuten, 3 Sekundendone. You can restart the clock. Well, this was actually prior to you adding
+4:104 Minuten, 10 Sekundenall of it and then eventually starting the cloud code again and testing the Alpaka server. Okay. So once our installation is done, you can go ahead
+4:194 Minuten, 19 Sekundenand you know just instruct clot code on what you really want to do. So for in this example, what I really wanted to do
+4:264 Minuten, 26 Sekundenwas hey I have uh list of spy stocks all the 500 stock in spy. Um I wanted to
+4:344 Minuten, 34 Sekundentest whether if I place my order every Monday with $100 in each stock and um
+4:424 Minuten, 42 Sekundenlet's say I'll keep 1% as my uh my realized profit and I want to liquidate
+4:504 Minuten, 50 Sekundenit uh on by Friday same week before the market closes regardless if the profit was real realized or not for that stock.
+5:025 Minuten, 2 SekundenI also mentioned that hey go ahead and create a summary of every stock with total amount invested [clears throat] in
+5:085 Minuten, 8 Sekundenwhich uh invested in. So it should be the same because we are going with $100
+5:155 Minuten, 15 Sekundenfor every stock and right uh but anyway I wanted a summary of that and then also provide me a table of weekly net profit
+5:235 Minuten, 23 Sekundenand loss loss losses. Um and then that was the part of back testing so that
+5:315 Minuten, 31 Sekundenonce I'm able to run that file I'm also able to know whether this strategy is actually profitable or not. Uh anyway,
+5:395 Minuten, 39 Sekundenfor the purpose of this video before testing that is strategy, I wanted to also create a file uh with spy fixed
+5:475 Minuten, 47 Sekundenprofit which will eventually show me how I can go ahead and run that file uh to
+5:555 Minuten, 55 Sekundenactually place the buy and sell orders as per the strategy that I've defined above. So you will notice that it
+6:026 Minuten, 2 Sekundenactually went through my whole repository, understood the structure and then eventually
+6:096 Minuten, 9 Sekundenspit out these two files, one for back testing and one for actually uh placing the order into my account. So if you
+6:186 Minuten, 18 Sekundenlook at the code that it produced and I literally went through this code it it was it's mind-blowing uh the way it has
+6:276 Minuten, 27 Sekundencome up with keeping and using all my existing uh objects that I had already
+6:346 Minuten, 34 Sekundendefined and then just working through those objects to eventually uh build this back testing strategy for me.
+6:456 Minuten, 45 Sekundenuh same it did with spy fixed profit.
+6:486 Minuten, 48 SekundenThe actual implementation of this back testing strategy um although there were some uh modification I would I I could
+6:576 Minuten, 57 Sekundendo to enhance uh the actual execution and yeah um um I can share the output as
+7:087 Minuten, 8 Sekundenwell uh of the back testing strategy with you guys. Um and you will notice that um yeah it it
+7:177 Minuten, 17 Sekundenactually uh went through uh displaying all the stocks in spy and how much each
+7:257 Minuten, 25 Sekundenand every stock was either profitable or at loss and then every week how much profit or loss I had made.
+7:347 Minuten, 34 SekundenYeah.
+7:367 Minuten, 36 SekundenUm well, good luck building with the clot code. And that's all for now. Thank you.
+
+Mit Video synchronisieren
