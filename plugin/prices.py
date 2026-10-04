@@ -102,7 +102,7 @@ def start_run(conn: sqlite3.Connection, source: str, job: str) -> int:
     with conn:
         cur = conn.execute("INSERT INTO source_run(source, job, started_at, status) VALUES (?, ?, ?, 'running')",
                            (source, job, db.utcnow()))
-    return cur.lastrowid
+    return int(cur.lastrowid or 0)
 
 
 def finish_run(conn: sqlite3.Connection, run_id: int, status: str, *, items: int = 0, requests: int = 0,

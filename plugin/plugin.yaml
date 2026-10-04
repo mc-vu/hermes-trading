@@ -1,0 +1,6 @@
+name: hermes-trading
+version: 0.1.0
+description: "Markt-Lagebild mit Papierhandel (Aktien USA/DE, ETFs/Indizes, Anleihen/Zinsen, Rohstoffe, Devisen, Krypto). Nur lesend, keine echten Orders. T1: Kursdaten aus EZB, Binance, Kraken sowie (mit Schluessel) Stooq, FRED, Finnhub."
+author: "MC (mc-vu)"
+provides_tools:
+  - trading_status
