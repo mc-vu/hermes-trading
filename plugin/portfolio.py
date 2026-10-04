@@ -66,12 +66,15 @@ def _to_eur(conn, amount, currency, day):
 def evaluate(conn, snapshot_date=None, save=True):
     db.migrate(conn)
     day = snapshot_date or date.today().isoformat()
-    positions, totals = [], {}
+    positions, totals, missing = [], {}, []
     for r in conn.execute("SELECT * FROM portfolio_position ORDER BY depot,symbol"):
         px = _price(conn, r["symbol"], day)
-        if not px: continue
+        if not px:
+            missing.append({"depot": r["depot"], "symbol": r["symbol"]})
+            continue
         value = _to_eur(conn, r["quantity"] * px["close"], px["currency"], px["date"])
-        prev = _price(conn, r["symbol"], day, True)
+        # Vortag relativ zum letzten Kursdatum, sonst vergleicht ein Wochenend-Lauf den Kurs mit sich selbst.
+        prev = _price(conn, r["symbol"], px["date"], True)
         prev_value = _to_eur(conn, r["quantity"] * prev["close"], prev["currency"], prev["date"]) if prev else None
         pnl = value-r["cost_eur"]
         positions.append({"depot":r["depot"],"symbol":r["symbol"],"name":r["name"],"value_eur":value,
@@ -85,7 +88,7 @@ def evaluate(conn, snapshot_date=None, save=True):
         for p in positions:
             k=p[field] or "unknown"; result[k]=result.get(k,0)+p["value_eur"]
         return {k:v/total*100 if total else 0 for k,v in result.items()}
-    report={"date":day,"positions":positions,"depots_eur":totals,"total_eur":total,
+    report={"date":day,"positions":positions,"missing_prices":missing,"depots_eur":totals,"total_eur":total,
       "allocation_percent":{k:allocation(k) for k in ("asset_class","sector","country","currency")},
       "largest_position":max(positions,key=lambda p:p["value_eur"],default=None),
       "largest_sector":max(allocation("sector").items(),key=lambda x:x[1],default=None)}

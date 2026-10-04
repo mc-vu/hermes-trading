@@ -1,6 +1,6 @@
 # STATUS – hermes-trading
 
-Stand: 04.10.2026 · Phase T1 (Gerüst, DB, Safety, Kursdaten-Adapter) abgeschlossen · nur lesend, keine echten Orders
+Stand: 04.10.2026 · Phasen T1–T3 (Gerüst, Kurse, Ereignisse, Depots lesen) · nur lesend, keine echten Orders
 
 ## Kurzfassung
 
@@ -176,14 +176,55 @@ Scalable, Revolut-App-Krypto und weitere Depots werden über eine lokal gepflegt
 
 #### Binance-Schlüssel mit minimalen Rechten
 
-1. In Binance neuen API-Schlüssel anlegen; IP-Beschränkung für den eigenen Zugriff aktivieren, wenn passend.
-2. Nur Lesen aktivieren. Spot-Handel, Margin/Futures-Handel, Auszahlungen, Transfers und alle anderen Schreibrechte deaktiviert lassen.
-3. Schlüsselwerte ausschließlich lokal in `~/.hermes/.env` als `BINANCE_API_KEY=…` und `BINANCE_API_SECRET=…` setzen. Nicht in Chat, Repo oder Logs.
-4. Der Aufruf `~/.local/bin/hermes-python -m plugin portfolio:binance` fragt zuerst `GET /sapi/v1/account/apiRestrictions` ab; bei erlaubtem Handel oder Auszahlung bricht er mit `Schlüssel hat zu viele Rechte` ab. Nur dann folgt `GET /api/v3/account` für Bestände. Beide Requests sind GET und HMAC-signiert; es gibt keinen Order-, Auszahlungs- oder Transfer-Code. Echte Bestände erscheinen nur lokal in dieser CLI-Ausgabe. `HTR_PAPER_CAPITAL_EUR` konfiguriert das nur initialisierte Paper-Depot (Standard 10.000 EUR); keine Paper-Transaktionen in T3.
+Schritt für Schritt (Binance-Webseite, „Konto → API-Verwaltung“):
+
+1. „API erstellen“ → Typ „Vom System generiert“ (HMAC). Ed25519/RSA unterstützt der Code nicht.
+2. Name z. B. `hermes-read-only`, Sicherheitsbestätigung (2FA) abschließen.
+3. Bei „API-Einschränkungen bearbeiten“ **nur** „Lesen aktivieren“ (`enableReading`) angehakt lassen.
+   **Aus** lassen: „Spot- & Margin-Handel aktivieren“, „Margin-Kredite, Rückzahlung & Transfer“,
+   „Futures aktivieren“, „European Options“, „Auszahlungen aktivieren“, „Universal-Transfer erlauben“,
+   „Interne Transfers“, „Portfolio-Margin“ und „FIX-API“.
+4. IP-Zugriff: „Nur vertrauenswürdige IPs“ mit der öffentlichen IP von dejavu (empfohlen). Ohne IP-Bindung
+   funktioniert ein reiner Leseschlüssel ebenfalls.
+5. Werte nur lokal in `~/.hermes/.env` eintragen (nie Chat, Repo, Logs):
+   `BINANCE_API_KEY=…` und `BINANCE_API_SECRET=…`.
+6. Prüfen: `~/.local/bin/hermes-python -m plugin portfolio:binance`. Ausgabe enthält echte Bestände, nur
+   lokal ansehen.
+
+Ablauf im Code (`plugin/binance_account.py`): Zuerst `GET /sapi/v1/account/apiRestrictions`. Ist eines der
+Rechte Handel, Margin, Futures, Optionen, Auszahlung, interner/Universal-Transfer, Portfolio-Margin oder FIX
+erlaubt, bricht er mit `Schlüssel hat zu viele Rechte` ab, bevor Bestände gelesen werden. Erst danach
+`GET /api/v3/account`; meldet das Konto dort `canTrade`/`canWithdraw`, ebenfalls Abbruch. Beide Requests
+sind GET und HMAC-signiert. `ALLOWED_PATHS` im Code enthält genau diese zwei Pfade; jeder andere Pfad wirft
+`BinanceReadOnlyError`, bevor ein Request gesendet wird. Es gibt keinen Order-, Auszahlungs- oder
+Transfer-Code (statischer Test `tests/test_safety.py`).
+
+Offener Punkt: Laut Binance-Doku liefert `/api/v3/account` `canTrade`/`canWithdraw` als
+**Kontostatus**, nicht zwingend als Schlüsselrecht. Ob ein reiner Leseschlüssel dort `false` meldet, ist
+erst mit MCVus Schlüssel prüfbar. Bricht `portfolio:binance` trotz korrekt eingeschränktem Schlüssel ab,
+ist das diese Prüfung; dann melden, nicht selbst lockern.
+
+#### Paper-Depot
+
+`HTR_PAPER_CAPITAL_EUR` konfiguriert das Paper-Depot (Standard 10.000 EUR). Es wird bei
+`portfolio:value` einmalig angelegt; späteres Ändern der Variable ändert ein bestehendes Paper-Depot
+nicht. Keine Paper-Transaktionen in T3.
 
 ### T3-Tests und Einschränkungen
 
-Portfolioimport, FX-Umrechnung, Vortragsvergleich, Snapshots, Paper-Initialisierung sowie gemockte Binance-Rechteprüfung werden automatisiert getestet. Binance-Kontozugriff wurde nicht live getestet, da dafür MCVu's read-only API-Schlüssel erforderlich wäre. Die Bewertung hängt von gespeicherten Kursen und Wechselkursen ab; fehlende FX-Kurse brechen mit Fehler ab, fehlende Positionkurse werden ausgelassen.
+`~/.local/bin/hermes-python -m unittest discover -s tests -t .`: 123 Tests, OK (Stand Lauf 6).
+Getestet: Import und fehlerhafte Zeilen (ohne Werte in der Meldung), Bewertung mit FX, Vortag am
+Wochenende, fehlende Kurse, Snapshots, Paper-Initialisierung, Binance gemockt (Rechteprüfung vor
+Bestandsabfrage, jedes Schreibrecht führt zum Abbruch, nicht erlaubte Pfade ohne Request abgewiesen),
+statischer Scan ohne Order-/Auszahlungs-/Transfer-Code.
+
+Smoke mit `portfolio/holdings.example.csv` gegen eine Kopie von `.dev/data.db`: Import 3 Zeilen,
+Bewertung BTC und ETH in EUR mit Veränderung zum Vortag. `EUNL.DE` steht unter `missing_prices`, weil
+ohne Stooq-Schlüssel kein Kurs vorliegt. Positionen ohne Kurs werden nicht mitgerechnet, sondern in
+`missing_prices` gelistet; fehlende FX-Kurse brechen mit Fehler ab.
+
+Nicht live getestet: Binance-Konto (braucht MCVus Leseschlüssel). Branche und Land sind nur für
+Watchlist-Instrumente gepflegt; andere Positionen erscheinen als `unknown`.
 
 ## T2-Tests
 

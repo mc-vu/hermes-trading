@@ -37,6 +37,12 @@ class PortfolioTests(unittest.TestCase):
         self.assertEqual(out['total_eur'],60)
         self.assertEqual(out['positions'][0]['change_yesterday_eur'],10)
         self.assertEqual(self.conn.execute("select count(*) from portfolio_snapshot").fetchone()[0],1)
+        # Wochenende: letzter Kurs Samstag (10-03), Vergleich gegen 10-02, nicht gegen sich selbst.
+        self.conn.execute("insert into portfolio_position(depot,symbol,name,quantity,cost_eur,currency,source) values('scalable','XYZ','Ohne Kurs',1,1,'EUR','csv')")
+        self.conn.commit()
+        out=evaluate(self.conn,snapshot_date='2026-10-04',save=False)
+        self.assertEqual(out['positions'][0]['change_yesterday_eur'],10)
+        self.assertEqual(out['missing_prices'],[{"depot":"scalable","symbol":"XYZ"}])
     def test_paper_default_is_configured_once(self):
         self.assertEqual(ensure_paper(self.conn),10000)
         self.assertEqual(ensure_paper(self.conn,2500),10000)
@@ -47,6 +53,19 @@ class PortfolioTests(unittest.TestCase):
         with self.assertRaisesRegex(BinanceReadOnlyError,"Schlüssel hat zu viele Rechte"):
             api.read_balances()
         self.assertEqual(client.get_json.call_count,1)
+    def test_binance_rejects_non_allowlisted_path_without_request(self):
+        client=Mock()
+        api=BinanceAccount(client,"key","secret",clock=lambda:123)
+        for path in ("/api/v3/order", "/sapi/v1/capital/withdraw/apply", "/sapi/v1/asset/transfer", "/api/v3/account/"):
+            with self.assertRaisesRegex(BinanceReadOnlyError,"nicht erlaubt"):
+                api._get_signed(path)
+        client.get_json.assert_not_called()
+    def test_binance_any_write_right_aborts(self):
+        for right in ("enableWithdrawals","enableMargin","enableFutures","enableInternalTransfer","permitsUniversalTransfer"):
+            client=Mock(); client.get_json.side_effect=[{"enableReading":True,right:True}]
+            with self.assertRaisesRegex(BinanceReadOnlyError,"Schlüssel hat zu viele Rechte"):
+                BinanceAccount(client,"key","secret",clock=lambda:123).read_balances()
+            self.assertEqual(client.get_json.call_count,1,right)
     def test_binance_read_only_mock(self):
         client=Mock(); client.get_json.side_effect=[{"enableSpotAndMarginTrading":False,"enableWithdrawals":False},
             {"canTrade":False,"canWithdraw":False,"balances":[{"asset":"BTC","free":"0.2","locked":"0"}]}]

@@ -38,8 +38,15 @@ def plugin_sources():
                   if p.suffix in {".py", ".sql", ".yaml", ".json"} and "__pycache__" not in p.parts)
 
 
+BINANCE_ALLOWED_LITERALS = ('"/sapi/v1/account/apiRestrictions"', '"/api/v3/account"')
+
+
 def scan(text: str, filename: str = "") -> list[str]:
     hits = []
+    if filename == "binance_account.py":
+        # Genau die zwei erlaubten Konto-Pfade ausblenden (gleiche Laenge, Zeilennummern bleiben stimmig).
+        for lit in BINANCE_ALLOWED_LITERALS:
+            text = text.replace(lit, " " * len(lit))
     for name, pat in FORBIDDEN_PATTERNS.items():
         # Der Binance-Kontoadapter signiert ausschliesslich die zwei unten festgelegten GET-Routen.
         if filename == "binance_account.py" and name in {"signing", "transfer/withdraw"}:
@@ -69,9 +76,15 @@ class NoOrderCodeTest(unittest.TestCase):
         self.assertEqual(hits, [], "\n".join(hits))
 
     def test_binance_account_has_only_allowlisted_read_endpoints(self):
+        from plugin import binance_account
+        self.assertEqual(binance_account.ALLOWED_PATHS,
+                         frozenset({"/sapi/v1/account/apiRestrictions", "/api/v3/account"}))
         text = (PLUGIN_DIR / "binance_account.py").read_text(encoding="utf-8")
-        self.assertIn('"sapi/v1/account/apiRestrictions"', text)
-        self.assertIn('"/api/v3/account"', text)
+        for lit in BINANCE_ALLOWED_LITERALS:
+            self.assertEqual(text.count(lit), 1, lit)
+        # Keine weiteren Binance-Pfadliterale im Modul.
+        paths = set(re.findall(r"[\"'](/(?:api|sapi)/[^\"']*)[\"']", text))
+        self.assertEqual(paths, {"/sapi/v1/account/apiRestrictions", "/api/v3/account"})
         self.assertNotRegex(text, r"/api/v[0-9]+/(order|orders)|withdraw/apply|asset/transfer|/transfer")
         self.assertIn("hmac.new", text)
         self.assertIn("X-MBX-APIKEY", text)
