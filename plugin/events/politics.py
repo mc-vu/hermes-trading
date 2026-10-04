@@ -297,7 +297,9 @@ class HouseClerkSource(EventSource):
     max_rps = 1.0
     terms_url = "https://disclosures-clerk.house.gov/FinancialDisclosure"
     limit_note = "kein veroeffentlichtes Limit; 1 ZIP (~60 KB) je Jahr und Lauf"
-    priority = 8
+    # Niedriger als Tracefour: der Index-Eintrag ist nur ein Hinweis "Meldung eingegangen"; sobald
+    # Tracefour die Einzeltrades liefert, zeigt der Eintrag per dup_of auf einen davon.
+    priority = 4
 
     def fetch(self, ctx: EventContext) -> FetchResult:
         res = FetchResult()

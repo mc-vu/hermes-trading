@@ -3,9 +3,9 @@ Zuordnung zu Instrumenten und Branchen.
 
 Duplikate:
 - Dieselbe Quelle liefert dasselbe Ereignis erneut (gleiche ``source_id``): Update, kein neuer Eintrag.
-- Ein Ereignis teilt einen Duplikat-Schluessel mit einem anderen: beide bleiben gespeichert, das
-  Ereignis der Quelle mit der hoechsten Prioritaet (Primaerquelle, z. B. SEC vor Tracefour) ist das
-  Original, die anderen zeigen per ``dup_of`` darauf.
+- Ein Ereignis teilt einen Duplikat-Schluessel mit einem anderen: beide bleiben gespeichert. Original
+  ist das Ereignis der Quelle mit der hoechsten Prioritaet (Primaerquelle, z. B. SEC vor Tracefour);
+  beim anderen zeigt ``dup_of`` auf das Original.
   Schluessel: kanonische URL (wenn eindeutig), bei Nachrichten/Kalender/Gesetzen Typ + Tag +
   Titel-Fingerabdruck, und quellenspezifische Schluessel (SEC-Accession, House-DocID ...).
   ``cross_keys`` gelten nur gegenueber anderen Quellen (eine House-Meldung enthaelt mehrere Trades).
@@ -129,7 +129,13 @@ def _upsert(conn, source: str, item: EventItem, matcher: Matcher, run_id, now_is
 
 
 def _resolve_duplicates(conn, eid: int, source: str, keys: list[tuple[str, bool]], prio: dict[str, int]) -> bool:
-    """Setzt ``dup_of`` fuer die Gruppe um ``eid``. True, wenn ``eid`` einen Duplikat-Partner hat."""
+    """Setzt ``dup_of`` fuer ``eid`` und seine Partner. True, wenn ``eid`` danach als Duplikat gilt.
+
+    Regeln: Partner = Ereignisse mit gemeinsamem Schluessel (``cross_only``-Schluessel nur aus anderen
+    Quellen). Das Ereignis mit der hoechsten Quellen-Prioritaet (bei Gleichstand das aeltere) ist das
+    Original. Ereignisse derselben Quelle werden ueber cross-Schluessel nie zusammengelegt: mehrere Trades
+    einer House-Meldung bleiben einzeln sichtbar, nur der Index-Eintrag zeigt auf einen davon.
+    """
     if not keys:
         return False
     cross = {k for k, c in keys if c}
@@ -137,25 +143,31 @@ def _resolve_duplicates(conn, eid: int, source: str, keys: list[tuple[str, bool]
     rows = conn.execute(
         f"SELECT k.key, k.event_id, k.cross_only, e.source, e.dup_of FROM event_key k JOIN event e ON e.id = k.event_id"
         f" WHERE k.key IN ({marks}) AND k.event_id != ?", (*[k for k, _ in keys], eid)).fetchall()
-    partners = set()
-    for key, other, other_cross, other_source, other_dup in rows:
+    partners: dict[int, str] = {}
+    for key, other, other_cross, other_source, _ in rows:
         if other_source != source or (key not in cross and not other_cross):
-            partners.add(other)
-            if other_dup:
-                partners.add(other_dup)
+            partners[other] = other_source
     if not partners:
-        own = conn.execute("SELECT dup_of FROM event WHERE id = ?", (eid,)).fetchone()[0]
-        return own is not None
-    group = partners | {eid}
-    marks = ",".join("?" * len(group))
-    # Ereignisse, die bereits auf ein Gruppenmitglied zeigen, gehoeren dazu.
-    group |= {r[0] for r in conn.execute(f"SELECT id FROM event WHERE dup_of IN ({marks})", tuple(group))}
-    marks = ",".join("?" * len(group))
-    members = conn.execute(f"SELECT id, source FROM event WHERE id IN ({marks})", tuple(group)).fetchall()
-    canonical = min(members, key=lambda r: (-prio.get(r[1], 5), r[0]))[0]
-    conn.execute(f"UPDATE event SET dup_of = CASE WHEN id = ? THEN NULL ELSE ? END WHERE id IN ({marks})",
-                 (canonical, canonical, *group))
-    return True
+        return conn.execute("SELECT dup_of FROM event WHERE id = ?", (eid,)).fetchone()[0] is not None
+
+    def rank(e_id: int, e_src: str) -> tuple:
+        return (-prio.get(e_src, 5), e_id)
+
+    best_id, best_src = min([(eid, source), *partners.items()], key=lambda x: rank(*x))
+    if best_id != eid:
+        root = conn.execute("SELECT COALESCE(dup_of, id) FROM event WHERE id = ?", (best_id,)).fetchone()[0]
+        conn.execute("UPDATE event SET dup_of = ? WHERE id = ?", (root, eid))
+        conn.execute("UPDATE event SET dup_of = ? WHERE dup_of = ?", (root, eid))
+        return True
+    conn.execute("UPDATE event SET dup_of = NULL WHERE id = ?", (eid,))
+    for pid, psrc in partners.items():
+        cur = conn.execute("SELECT e.dup_of, t.source FROM event e LEFT JOIN event t ON t.id = e.dup_of WHERE e.id = ?",
+                           (pid,)).fetchone()
+        # Partner uebernehmen, wenn er noch Original ist oder auf ein schwaecheres Original zeigt.
+        if cur[0] is None or rank(cur[0], cur[1]) > rank(eid, source):
+            conn.execute("UPDATE event SET dup_of = ? WHERE id = ?", (eid, pid))
+            conn.execute("UPDATE event SET dup_of = ? WHERE dup_of = ?", (eid, pid))
+    return False
 
 
 # ------------------------------------------------------------------ Abfragen

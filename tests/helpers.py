@@ -18,8 +18,8 @@ class FakeResponse:
             self._body = json.dumps(body).encode()
         self.status = status
 
-    def read(self):
-        return self._body
+    def read(self, n=-1):
+        return self._body if n is None or n < 0 else self._body[:n]
 
     def __enter__(self):
         return self

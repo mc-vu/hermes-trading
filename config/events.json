@@ -27,7 +27,7 @@
       "enabled": true,
       "max_requests": 20,
       "lookback_days": 120,
-      "follow": ["nancy-pelosi", "ro-khanna", "josh-gottheimer", "michael-mccaul", "tommy-tuberville", "marjorie-taylor-greene", "dan-crenshaw", "rob-bresnahan"],
+      "follow": ["nancy-pelosi", "ro-khanna", "josh-gottheimer", "michael-mccaul", "tommy-tuberville", "marjorie-taylor-greene", "dan-crenshaw", "robert-p-bresnahan"],
       "_note": "Tracefour anonym: 60 Requests/Stunde je IP (gemeinsam mit tracefour_form4). Erst Mitglieder mit neuen House-PTRs, dann follow, dann Rotation."
     },
     "tracefour_form4": {
