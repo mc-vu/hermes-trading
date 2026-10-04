@@ -72,9 +72,23 @@ def _slash(raw_args: str) -> str:
     return redact(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 
+def _briefing_llm(ctx):
+    """messages -> Text ueber ctx.llm.complete (aktives Modell des Nutzers). None, wenn der Host kein
+    ctx.llm anbietet; dann bleibt das Lagebild regelbasiert."""
+    llm = getattr(ctx, "llm", None)
+    if llm is None:
+        return None
+
+    def call(messages):
+        return llm.complete(messages=messages, max_tokens=1500, temperature=0.2, timeout=120,
+                            purpose="hermes-trading.briefing").text
+    return call
+
+
 def register(ctx) -> None:
     assert_read_only()
     assert READ_ONLY is True
+    cli.BRIEFING_LLM = _briefing_llm(ctx)
     for schema, handler in TOOLS:
         ctx.register_tool(name=schema["name"], toolset=TOOLSET, schema=schema,
                           handler=handler, description=schema["description"])

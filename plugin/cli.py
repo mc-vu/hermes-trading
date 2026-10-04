@@ -251,6 +251,50 @@ def cmd_portfolio_binance(args=None) -> dict:
     return {"ok": True, "balances": BinanceAccount().read_balances()}
 
 
+# Wird von register() gesetzt (Hermes-Runtime): Funktion messages -> Text ueber ctx.llm.complete.
+# Ohne Hermes (python -m plugin) bleibt sie None und das Lagebild ist regelbasiert.
+BRIEFING_LLM = None
+
+
+def _morning_error(exc: Exception) -> dict:
+    """Morning Call: auch im Fehlerfall eine kurze, ehrliche Textzeile statt JSON."""
+    msg = redact(f"{type(exc).__name__}: {exc}")
+    return {"ok": False, "error": msg, STDOUT_TEXT: f"LAGEBILD · keine Anlageberatung: nicht verfügbar ({msg})"[:300]}
+
+
+def cmd_report(args=None) -> dict:
+    """Taegliches Lagebild. ``--morning``: nur der Text (<= 20 Zeilen) und Speichern mit delivered_via.
+    Liest nur die DB; Kurse/Ereignisse vorher per prices:update / events:update holen."""
+    from datetime import datetime
+
+    from .briefing import build_briefing, save_briefing
+    morning = bool(getattr(args, "morning", False))
+    try:
+        now = getattr(args, "now", None)
+        now = datetime.fromisoformat(now) if now else None
+        conn = _conn(args)
+    except Exception as exc:
+        if morning:
+            return _morning_error(exc)
+        raise
+    try:
+        b = build_briefing(conn, now=now, llm=BRIEFING_LLM, use_llm=not getattr(args, "no_llm", False))
+        bid = None if getattr(args, "no_save", False) else save_briefing(
+            conn, b, delivered_via="morning_call" if morning else None)
+        out = {"ok": True, "briefing_id": bid, "generator": b["generator"], "llm_status": b["llm_status"],
+               "llm_error": b["llm_error"], "llm_dropped": b["llm_dropped"], "counts": b["counts"],
+               "lines": len(b["lines"]), "text": b["text"]}
+        if morning or getattr(args, "text", False):
+            out[STDOUT_TEXT] = b["text"]
+        return out
+    except Exception as exc:
+        if morning:
+            return _morning_error(exc)
+        raise
+    finally:
+        conn.close()
+
+
 def cmd_test(args=None) -> dict:
     """Komplette Testsuite (unittest). Laeuft nur im Repo."""
     import os
@@ -272,7 +316,8 @@ COMMANDS = {"migrate": cmd_migrate, "status": cmd_status, "sources": cmd_sources
             "runs": cmd_runs, "smoke": cmd_smoke, "events:sources": cmd_events_sources,
             "events:update": cmd_events_update, "events:show": cmd_events_show, "events:stats": cmd_events_stats,
             "events:smoke": cmd_events_smoke, "portfolio:import": cmd_portfolio_import,
-            "portfolio:value": cmd_portfolio_value, "portfolio:binance": cmd_portfolio_binance, "test": cmd_test}
+            "portfolio:value": cmd_portfolio_value, "portfolio:binance": cmd_portfolio_binance, "report": cmd_report,
+            "test": cmd_test}
 ALIASES = {"db:migrate": "migrate", "prices-update": "prices:update", "prices-show": "prices:show",
            "watchlist:sync": "watchlist", "events-update": "events:update", "events-show": "events:show"}
 
@@ -319,6 +364,12 @@ def setup_argparse(parser: argparse.ArgumentParser) -> None:
     subs.add_parser("portfolio:binance", help="Binance-Rechte prüfen und Spot-Bestände lesend abrufen")
     p_esm = subs.add_parser("events:smoke", help="Live-Smoke aller Ereignisquellen in .dev/smoke/events.db")
     p_esm.add_argument("--source", help="nur diese Quelle(n)")
+    p_rep = subs.add_parser("report", help="taegliches Lagebild (nur DB, keine Abrufe); speichert in daily_briefing")
+    p_rep.add_argument("--morning", action="store_true", help="nur Text (<= 20 Zeilen) fuer den Morning Call")
+    p_rep.add_argument("--text", action="store_true", help="nur Text statt JSON")
+    p_rep.add_argument("--no-llm", dest="no_llm", action="store_true", help="nur regelbasiert, kein LLM-Aufruf")
+    p_rep.add_argument("--no-save", dest="no_save", action="store_true", help="nicht in daily_briefing speichern")
+    p_rep.add_argument("--now", help="Bezugszeitpunkt ISO mit Zeitzone (Tests/Beispiele), Default jetzt")
     subs.add_parser("test", help="komplette Testsuite (unittest) ausfuehren")
     parser.set_defaults(func=handle)
 
