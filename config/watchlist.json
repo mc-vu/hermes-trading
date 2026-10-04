@@ -1,0 +1,57 @@
+{
+  "_comment": "Startwerte der Beobachtungsliste. symbol = interner Schluessel. sources = Symbol je Kursquelle; jede Quelle muss in der Instrument-Waehrung notieren. Quellen mit Schluessel (stooq, fred, finnhub) werden nur abgefragt, wenn die Variable gesetzt ist.",
+  "fx_currencies": ["USD", "GBP", "CHF", "JPY"],
+  "history_days": 400,
+  "instruments": [
+    {"symbol": "SPX", "name": "S&P 500", "market": "index", "exchange": "S&P DJI", "currency": "USD", "asset_class": "index", "country": "US",
+     "sources": {"stooq": "^spx"}},
+    {"symbol": "DAX", "name": "DAX 40", "market": "index", "exchange": "XETRA", "currency": "EUR", "asset_class": "index", "country": "DE",
+     "sources": {"stooq": "^dax"}},
+    {"symbol": "EUNL.DE", "name": "iShares Core MSCI World UCITS ETF (Acc)", "isin": "IE00B4L5Y983", "market": "etf", "exchange": "XETRA", "currency": "EUR", "asset_class": "etf", "country": "IE",
+     "sources": {"stooq": "eunl.de"}},
+
+    {"symbol": "AAPL.US", "name": "Apple", "market": "us_equity", "exchange": "NASDAQ", "currency": "USD", "asset_class": "equity", "country": "US",
+     "sources": {"stooq": "aapl.us", "finnhub": "AAPL"}},
+    {"symbol": "MSFT.US", "name": "Microsoft", "market": "us_equity", "exchange": "NASDAQ", "currency": "USD", "asset_class": "equity", "country": "US",
+     "sources": {"stooq": "msft.us", "finnhub": "MSFT"}},
+    {"symbol": "NVDA.US", "name": "NVIDIA", "market": "us_equity", "exchange": "NASDAQ", "currency": "USD", "asset_class": "equity", "country": "US",
+     "sources": {"stooq": "nvda.us", "finnhub": "NVDA"}},
+    {"symbol": "JPM.US", "name": "JPMorgan Chase", "market": "us_equity", "exchange": "NYSE", "currency": "USD", "asset_class": "equity", "country": "US",
+     "sources": {"stooq": "jpm.us", "finnhub": "JPM"}},
+    {"symbol": "XOM.US", "name": "Exxon Mobil", "market": "us_equity", "exchange": "NYSE", "currency": "USD", "asset_class": "equity", "country": "US",
+     "sources": {"stooq": "xom.us", "finnhub": "XOM"}},
+
+    {"symbol": "SAP.DE", "name": "SAP", "market": "de_equity", "exchange": "XETRA", "currency": "EUR", "asset_class": "equity", "country": "DE",
+     "sources": {"stooq": "sap.de"}},
+    {"symbol": "SIE.DE", "name": "Siemens", "market": "de_equity", "exchange": "XETRA", "currency": "EUR", "asset_class": "equity", "country": "DE",
+     "sources": {"stooq": "sie.de"}},
+    {"symbol": "ALV.DE", "name": "Allianz", "market": "de_equity", "exchange": "XETRA", "currency": "EUR", "asset_class": "equity", "country": "DE",
+     "sources": {"stooq": "alv.de"}},
+    {"symbol": "RHM.DE", "name": "Rheinmetall", "market": "de_equity", "exchange": "XETRA", "currency": "EUR", "asset_class": "equity", "country": "DE",
+     "sources": {"stooq": "rhm.de"}},
+
+    {"symbol": "XAUUSD", "name": "Gold (Spot, USD je Feinunze)", "market": "commodity", "exchange": "OTC", "currency": "USD", "asset_class": "commodity",
+     "sources": {"stooq": "xauusd"}},
+    {"symbol": "BRENT", "name": "Rohoel Brent (Spot, USD je Barrel)", "market": "commodity", "exchange": "ICE/EIA", "currency": "USD", "asset_class": "commodity",
+     "sources": {"fred": "DCOILBRENTEU"}},
+    {"symbol": "WTI", "name": "Rohoel WTI (Front-Future bzw. Spot, USD je Barrel)", "market": "commodity", "exchange": "NYMEX/EIA", "currency": "USD", "asset_class": "commodity",
+     "sources": {"stooq": "cl.f", "fred": "DCOILWTICO"}},
+
+    {"symbol": "EURUSD", "name": "EUR/USD (USD je EUR)", "market": "fx", "exchange": "ECB", "currency": "USD", "asset_class": "fx",
+     "sources": {"ecb": "EXR/D.USD.EUR.SP00.A", "stooq": "eurusd"}},
+
+    {"symbol": "BTC", "name": "Bitcoin in EUR", "market": "crypto", "exchange": "BINANCE/KRAKEN", "currency": "EUR", "asset_class": "crypto",
+     "sources": {"binance": "BTCEUR", "kraken": "XBTEUR"}},
+    {"symbol": "ETH", "name": "Ether in EUR", "market": "crypto", "exchange": "BINANCE/KRAKEN", "currency": "EUR", "asset_class": "crypto",
+     "sources": {"binance": "ETHEUR", "kraken": "ETHEUR"}},
+
+    {"symbol": "US10Y", "name": "Rendite US-Staatsanleihe 10 Jahre (%)", "market": "rates", "exchange": "US Treasury", "currency": "%", "asset_class": "rate", "country": "US",
+     "sources": {"fred": "DGS10", "stooq": "10usy.b"}},
+    {"symbol": "DE10Y", "name": "Rendite Bundesanleihe 10 Jahre (%; EZB = Monatsdurchschnitt)", "market": "rates", "exchange": "ECB/Bund", "currency": "%", "asset_class": "rate", "country": "DE",
+     "sources": {"ecb": "IRS/M.DE.L.L40.CI.0000.EUR.N.Z", "stooq": "10dey.b"}},
+    {"symbol": "ECB.DFR", "name": "EZB-Einlagefazilitaet (%; nur Aenderungstage)", "market": "rates", "exchange": "ECB", "currency": "%", "asset_class": "rate",
+     "sources": {"ecb": "FM/B.U2.EUR.4F.KR.DFR.LEV"}},
+    {"symbol": "ECB.MRO", "name": "EZB-Hauptrefinanzierungssatz (%; nur Aenderungstage)", "market": "rates", "exchange": "ECB", "currency": "%", "asset_class": "rate",
+     "sources": {"ecb": "FM/B.U2.EUR.4F.KR.MRR_FR.LEV"}}
+  ]
+}
