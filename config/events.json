@@ -1,0 +1,128 @@
+{
+  "_comment": "Ereignisquellen (T2). enabled=false schaltet eine Quelle ab. Schluessel nur in ~/.hermes/.env. Zeitfenster in Tagen. Siehe docs/STATUS.md (Tabelle Quellen).",
+  "sources": {
+    "sec_edgar": {
+      "enabled": true,
+      "forms": ["8-K", "4"],
+      "lookback_days": 30,
+      "max_form4_details": 25,
+      "_note": "Emittenten = Watchlist-Werte mit cik. Braucht SEC_CONTACT_EMAIL (User-Agent)."
+    },
+    "sec_13f": {
+      "enabled": true,
+      "max_zip_mb": 200,
+      "top_positions": 15,
+      "managers": [
+        {"cik": "1067983", "name": "Berkshire Hathaway"},
+        {"cik": "2026053", "name": "Pershing Square (Bill Ackman)"},
+        {"cik": "1536411", "name": "Duquesne Family Office (Stanley Druckenmiller)"},
+        {"cik": "1656456", "name": "Appaloosa (David Tepper)"},
+        {"cik": "1040273", "name": "Third Point (Daniel Loeb)"},
+        {"cik": "1697748", "name": "ARK Investment Management (Cathie Wood)"},
+        {"cik": "2045724", "name": "Situational Awareness (Leopold Aschenbrenner)"}
+      ],
+      "_note": "Manager-CIKs wie bei Tracefour (sourceId), Stand 04.10.2026. Quartalsdatensatz der SEC, nur neue Datensaetze werden geladen."
+    },
+    "tracefour_ptr": {
+      "enabled": true,
+      "max_requests": 20,
+      "lookback_days": 120,
+      "follow": ["nancy-pelosi", "ro-khanna", "josh-gottheimer", "michael-mccaul", "tommy-tuberville", "marjorie-taylor-greene", "dan-crenshaw", "rob-bresnahan"],
+      "_note": "Tracefour anonym: 60 Requests/Stunde je IP (gemeinsam mit tracefour_form4). Erst Mitglieder mit neuen House-PTRs, dann follow, dann Rotation."
+    },
+    "tracefour_form4": {
+      "enabled": true,
+      "lookback_days": 30,
+      "_note": "Form-4-Kaeufe/-Verkaeufe (open market) fuer die US-Watchlist-Werte, ohne Schluessel. Gegenprobe zu sec_edgar (gleiche Accession = Duplikat)."
+    },
+    "house_clerk": {
+      "enabled": true,
+      "lookback_days": 60,
+      "_note": "Offizieller House-Index (ZIP/XML) als Abgleich zu Tracefour. Senate eFD wird bewusst NICHT automatisch abgerufen."
+    },
+    "congress_committees": {
+      "enabled": true,
+      "_note": "Politiker -> Ausschuss aus github.com/unitedstates/congress-legislators (CC0), Ausschuss -> Branche aus config/sectors.json."
+    },
+    "congress_bills": {
+      "enabled": true,
+      "lookback_days": 7,
+      "max_bills": 250,
+      "_note": "congress.gov API, braucht CONGRESS_API_KEY (api.data.gov)."
+    },
+    "fomc": {"enabled": true, "horizon_days": 400},
+    "ecb_calendar": {"enabled": true, "horizon_days": 400, "monetary_policy_only": true},
+    "eurostat_calendar": {"enabled": true, "lookback_days": 7, "horizon_days": 60},
+    "fred_releases": {
+      "enabled": true,
+      "lookback_days": 7,
+      "horizon_days": 60,
+      "release_ids": {
+        "10": "Consumer Price Index (CPI)",
+        "50": "Employment Situation (Arbeitsmarktbericht)",
+        "53": "Gross Domestic Product (BIP)",
+        "54": "Personal Income and Outlays (PCE)",
+        "46": "Producer Price Index (PPI)",
+        "9": "Advance Monthly Sales for Retail and Food Services",
+        "13": "G.17 Industrial Production and Capacity Utilization",
+        "192": "Job Openings and Labor Turnover Survey (JOLTS)",
+        "180": "Unemployment Insurance Weekly Claims"
+      },
+      "_note": "FRED /fred/releases/dates, braucht FRED_API_KEY. Release-IDs vor Produktivnutzung mit Schluessel pruefen."
+    },
+    "marketaux": {
+      "enabled": true,
+      "lookback_days": 3,
+      "max_requests": 5,
+      "language": "en,de",
+      "_note": "Free: 100 Requests/Tag, 3 Artikel je Request."
+    },
+    "finnhub_news": {
+      "enabled": true,
+      "lookback_days": 3,
+      "general": true,
+      "max_per_symbol": 20
+    },
+    "rss": {
+      "enabled": true,
+      "max_items_per_feed": 30,
+      "feeds": [
+        {"id": "fed_monetary", "name": "Federal Reserve: Pressemitteilungen Geldpolitik", "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+         "country": "US", "sectors": ["macro"],
+         "terms": "https://www.federalreserve.gov/disclaimer.htm", "terms_note": "Inhalte gemeinfrei (U.S. government), Quellenangabe erbeten; RSS fuer Feedreader angeboten (https://www.federalreserve.gov/feeds/feeds.htm). robots.txt: keine."},
+        {"id": "ecb_press", "name": "EZB: Pressemitteilungen, Reden, Pressekonferenzen", "url": "https://www.ecb.europa.eu/rss/press.html",
+         "country": "EA", "sectors": ["macro"],
+         "terms": "https://www.ecb.europa.eu/home/disclaimer/html/index.en.html", "terms_note": "Freie Nutzung mit Quellenangabe EZB; robots.txt Crawl-delay 5 (eingehalten: 1 Abruf je Lauf)."},
+        {"id": "bundesbank_press", "name": "Deutsche Bundesbank: Pressenotizen", "url": "https://www.bundesbank.de/service/rss/de/633286/feed.rss",
+         "country": "DE", "sectors": ["macro"],
+         "terms": "https://www.bundesbank.de/de/startseite/rss", "terms_note": "RSS ausdruecklich fuer Feedreader angeboten; Nutzung mit Quellenangabe (Impressum/Nutzungsbedingungen bundesbank.de). robots.txt Crawl-delay 10 (1 Abruf je Lauf)."}
+      ],
+      "_rejected": [
+        {"name": "tagesschau.de Wirtschaft", "url": "https://www.tagesschau.de/wirtschaft/index~rss2.xml",
+         "reason": "Bedingungen (https://www.tagesschau.de/rssfeed-ts-104.html): nur nicht-kommerzielle Einbindung, 'Die Inhalte duerfen nicht archiviert werden' - wir speichern Ereignisse, daher nicht aufgenommen."},
+        {"name": "Eurostat News (Atom)", "url": "https://ec.europa.eu/eurostat/en/search?...p_p_resource_id=atom",
+         "reason": "robots.txt von ec.europa.eu sperrt /eurostat/*?*p_p_id=estatsearchportlet_WAR_estatsearchportlet - nicht genutzt; Eurostat kommt ueber den Release-Kalender (ICS)."}
+      ]
+    },
+    "polymarket": {
+      "enabled": true,
+      "db_path": "~/.hermes/plugin-data/hermes-polymarket/data.db",
+      "categories": ["POLITICS", "ECONOMICS", "FINANCE"],
+      "min_liquidity": 5000,
+      "max_age_hours": 48,
+      "max_markets": 150,
+      "topics": [
+        {"id": "fed_rates", "name": "Fed-Zinsentscheid", "keywords": ["Fed ", "Federal Reserve", "FOMC", "fed funds", "Powell"], "sectors": ["macro"], "country": "US"},
+        {"id": "ecb_rates", "name": "EZB-Zinsentscheid", "keywords": ["ECB", "European Central Bank", "Lagarde"], "sectors": ["macro"], "country": "EA"},
+        {"id": "other_central_banks", "name": "Andere Notenbanken", "keywords": ["Bank of England", "Bank of Japan", "BoJ", "Swiss National Bank"], "sectors": ["macro"]},
+        {"id": "us_macro", "name": "US-Konjunktur", "keywords": ["recession", "inflation", "CPI", "GDP", "unemployment", "jobs report", "tariff"], "sectors": ["macro"], "country": "US"},
+        {"id": "us_politics", "name": "US-Wahlen und Regierung", "keywords": ["Midterm", "Senate", "House", "Congress", "government shutdown", "Trump", "Presidential"], "sectors": [], "country": "US"},
+        {"id": "eu_politics", "name": "Wahlen Europa", "keywords": ["Germany", "German", "France", "French", "UK ", "Italy", "EU "], "sectors": []},
+        {"id": "conflicts", "name": "Konflikte und Geopolitik", "keywords": ["Ukraine", "Russia", "ceasefire", "Israel", "Iran", "China", "Taiwan", "invade", "invasion", "war ", "strike", "sanction", "NATO"], "sectors": ["defense"]},
+        {"id": "energy", "name": "Energie und Rohstoffe", "keywords": ["oil", "OPEC", "crude", "gas price", "gold"], "sectors": ["energy"]},
+        {"id": "crypto_policy", "name": "Krypto-Regulierung und -Preise", "keywords": ["Bitcoin", "Ethereum", "crypto", "stablecoin", "SEC "], "sectors": ["crypto"]}
+      ],
+      "_note": "Nur lesend (mode=ro) auf die DB des Polymarket-Plugins, keine eigenen API-Abrufe. Die Gamma-Abfragen laufen als SQL ueber die dort gespeicherten Gamma-Marktdaten."
+    }
+  }
+}

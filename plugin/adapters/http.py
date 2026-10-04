@@ -119,7 +119,13 @@ class HttpClient:
         except UnicodeDecodeError:
             raise ApiError("Antwort ist kein UTF-8-Text", url=full, status=status) from None
 
-    def _get(self, url: str, params: dict | None, headers: dict | None, accept: str):
+    def get_bytes(self, url: str, params: dict | None = None, headers: dict | None = None,
+                  accept: str = "*/*", max_bytes: int | None = None) -> bytes:
+        """Rohdaten (z. B. ZIP). ``max_bytes`` bricht bei zu grossen Antworten ab."""
+        raw, status, full = self._get(url, params, headers, accept=accept, max_bytes=max_bytes)
+        return raw
+
+    def _get(self, url: str, params: dict | None, headers: dict | None, accept: str, max_bytes: int | None = None):
         query = urllib.parse.urlencode({k: v for k, v in (params or {}).items() if v is not None}, doseq=True)
         full = url + (("&" if "?" in url else "?") + query if query else "")
         hdrs = {"User-Agent": USER_AGENT, "Accept": accept, **(headers or {})}
@@ -131,8 +137,10 @@ class HttpClient:
             req = urllib.request.Request(full, method="GET", headers=hdrs)
             try:
                 with self._open(req, timeout=self.config.timeout) as resp:
-                    raw = resp.read()
+                    raw = resp.read() if max_bytes is None else resp.read(max_bytes + 1)
                     status = getattr(resp, "status", 200)
+                if max_bytes is not None and len(raw) > max_bytes:
+                    raise ApiError(f"Antwort groesser als {max_bytes} Bytes", url=full, status=status)
             except urllib.error.HTTPError as exc:
                 body = _safe_read(exc)
                 if exc.code in RETRY_STATUS and attempt <= self.config.max_retries:

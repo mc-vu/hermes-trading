@@ -35,10 +35,12 @@ CREATE TABLE event (
 CREATE INDEX idx_event_time ON event(event_time);
 CREATE INDEX idx_event_type ON event(type, event_time);
 
--- Duplikat-Schluessel je Ereignis (mehrere je Ereignis moeglich).
+-- Duplikat-Schluessel je Ereignis (mehrere je Ereignis moeglich). cross_only = 1: Schluessel
+-- gilt nur gegenueber ANDEREN Quellen (z. B. House-DocID an mehreren Trades derselben Meldung).
 CREATE TABLE event_key (
-    key      TEXT NOT NULL,
-    event_id INTEGER NOT NULL REFERENCES event(id) ON DELETE CASCADE,
+    key        TEXT NOT NULL,
+    event_id   INTEGER NOT NULL REFERENCES event(id) ON DELETE CASCADE,
+    cross_only INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (key, event_id)
 );
 CREATE INDEX idx_event_key_event ON event_key(event_id);
