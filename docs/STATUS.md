@@ -179,9 +179,7 @@ Scalable, Revolut-App-Krypto und weitere Depots werden über eine lokal gepflegt
 1. In Binance neuen API-Schlüssel anlegen; IP-Beschränkung für den eigenen Zugriff aktivieren, wenn passend.
 2. Nur Lesen aktivieren. Spot-Handel, Margin/Futures-Handel, Auszahlungen, Transfers und alle anderen Schreibrechte deaktiviert lassen.
 3. Schlüsselwerte ausschließlich lokal in `~/.hermes/.env` als `BINANCE_API_KEY=…` und `BINANCE_API_SECRET=…` setzen. Nicht in Chat, Repo oder Logs.
-4. Der Adapter fragt zuerst `GET /sapi/v1/account/apiRestrictions` ab; bei erlaubtem Handel oder Auszahlung bricht er mit `Schlüssel hat zu viele Rechte` ab. Nur dann folgt `GET /api/v3/account` für Bestände. Beide Requests sind GET und HMAC-signiert; es gibt keinen Order-, Auszahlungs- oder Transfer-Code.
-
-Der Binance-Adapter `plugin.binance_account.BinanceAccount.read_balances()` ist noch nicht an die CLI angeschlossen. Es wird kein Schlüssel erstellt/geändert. `HTR_PAPER_CAPITAL_EUR` konfiguriert das nur initialisierte Paper-Depot (Standard 10.000 EUR); keine Paper-Transaktionen in T3.
+4. Der Aufruf `~/.local/bin/hermes-python -m plugin portfolio:binance` fragt zuerst `GET /sapi/v1/account/apiRestrictions` ab; bei erlaubtem Handel oder Auszahlung bricht er mit `Schlüssel hat zu viele Rechte` ab. Nur dann folgt `GET /api/v3/account` für Bestände. Beide Requests sind GET und HMAC-signiert; es gibt keinen Order-, Auszahlungs- oder Transfer-Code. Echte Bestände erscheinen nur lokal in dieser CLI-Ausgabe. `HTR_PAPER_CAPITAL_EUR` konfiguriert das nur initialisierte Paper-Depot (Standard 10.000 EUR); keine Paper-Transaktionen in T3.
 
 ### T3-Tests und Einschränkungen
 

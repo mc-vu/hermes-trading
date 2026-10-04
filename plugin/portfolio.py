@@ -45,7 +45,7 @@ def import_holdings(conn: sqlite3.Connection, path=PRIVATE_HOLDINGS):
         conn.execute("DELETE FROM portfolio_position WHERE source='csv'")
         conn.executemany("INSERT INTO portfolio_position(depot,isin,symbol,name,quantity,cost_eur,currency,purchase_date,source) VALUES(?,?,?,?,?,?,?,?, 'csv')",
             [(r["depot"], r.get("isin", ""), mapping.get(r.get("isin"), r["symbol"]), r["name"], r["menge"],
-              r["einstand_eur"], r["waehrung"], r.get("kaufdatum") or None) for r in rows])
+              r["einstand_eur"] * r["menge"], r["waehrung"], r.get("kaufdatum") or None) for r in rows])
     return len(rows)
 
 

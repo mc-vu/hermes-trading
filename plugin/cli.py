@@ -246,6 +246,11 @@ def cmd_portfolio_value(args=None) -> dict:
         conn.close()
 
 
+def cmd_portfolio_binance(args=None) -> dict:
+    from .binance_account import BinanceAccount
+    return {"ok": True, "balances": BinanceAccount().read_balances()}
+
+
 def cmd_test(args=None) -> dict:
     """Komplette Testsuite (unittest). Laeuft nur im Repo."""
     import os
@@ -267,7 +272,7 @@ COMMANDS = {"migrate": cmd_migrate, "status": cmd_status, "sources": cmd_sources
             "runs": cmd_runs, "smoke": cmd_smoke, "events:sources": cmd_events_sources,
             "events:update": cmd_events_update, "events:show": cmd_events_show, "events:stats": cmd_events_stats,
             "events:smoke": cmd_events_smoke, "portfolio:import": cmd_portfolio_import,
-            "portfolio:value": cmd_portfolio_value, "test": cmd_test}
+            "portfolio:value": cmd_portfolio_value, "portfolio:binance": cmd_portfolio_binance, "test": cmd_test}
 ALIASES = {"db:migrate": "migrate", "prices-update": "prices:update", "prices-show": "prices:show",
            "watchlist:sync": "watchlist", "events-update": "events:update", "events-show": "events:show"}
 
@@ -311,6 +316,7 @@ def setup_argparse(parser: argparse.ArgumentParser) -> None:
     p_pi = subs.add_parser("portfolio:import", help="lokale Depotdatei importieren (Bestände bleiben lokal)")
     p_pi.add_argument("--holdings", help="CSV-Pfad (Default portfolio/private/holdings.csv)")
     subs.add_parser("portfolio:value", help="Depotpositionen in EUR bewerten und Snapshot speichern")
+    subs.add_parser("portfolio:binance", help="Binance-Rechte prüfen und Spot-Bestände lesend abrufen")
     p_esm = subs.add_parser("events:smoke", help="Live-Smoke aller Ereignisquellen in .dev/smoke/events.db")
     p_esm.add_argument("--source", help="nur diese Quelle(n)")
     subs.add_parser("test", help="komplette Testsuite (unittest) ausfuehren")

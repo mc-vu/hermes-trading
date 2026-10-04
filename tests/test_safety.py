@@ -72,7 +72,7 @@ class NoOrderCodeTest(unittest.TestCase):
         text = (PLUGIN_DIR / "binance_account.py").read_text(encoding="utf-8")
         self.assertIn('"sapi/v1/account/apiRestrictions"', text)
         self.assertIn('"/api/v3/account"', text)
-        self.assertNotRegex(text, r"/api/v\\d/order|withdraw/apply|asset/transfer|/transfer")
+        self.assertNotRegex(text, r"/api/v[0-9]+/(order|orders)|withdraw/apply|asset/transfer|/transfer")
         self.assertIn("hmac.new", text)
         self.assertIn("X-MBX-APIKEY", text)
         self.assertIn("Schlüssel hat zu viele Rechte", text)

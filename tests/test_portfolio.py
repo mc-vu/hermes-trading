@@ -20,6 +20,7 @@ class PortfolioTests(unittest.TestCase):
         path = self.make_csv("depot,isin,symbol,name,menge,einstand_eur,waehrung,kaufdatum\nmybroker,,ABC,Sample,2,100,EUR,2025-01-01\n")
         self.assertEqual(import_holdings(self.conn, path), 1)
         self.assertEqual(self.conn.execute("select quantity from portfolio_position").fetchone()[0], 2)
+        self.assertEqual(self.conn.execute("select cost_eur from portfolio_position").fetchone()[0], 200)
         bad = self.make_csv("depot,isin,symbol,name,menge,einstand_eur,waehrung\nx,,ABC,Sample,secret,1,EUR\n")
         with self.assertRaisesRegex(ValueError, "Bestandswerte werden nicht ausgegeben"):
             load_holdings(bad)
