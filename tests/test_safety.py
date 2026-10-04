@@ -93,7 +93,7 @@ class NoOrderCodeTest(unittest.TestCase):
 
     def test_http_client_has_only_get(self):
         public = {n for n in dir(HttpClient) if not n.startswith("_")}
-        self.assertEqual({n for n in public if callable(getattr(HttpClient, n))}, {"get_json", "get_text"})
+        self.assertEqual({n for n in public if callable(getattr(HttpClient, n))}, {"get_json", "get_text", "get_bytes"})
 
     def test_sources_have_no_trading_methods(self):
         bad = re.compile(r"order|buy|sell|trade|sign|submit|cancel|execute|withdraw|transfer|account|balance")

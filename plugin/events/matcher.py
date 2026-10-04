@@ -36,13 +36,12 @@ def normalize_ticker(t: str) -> str:
 
 
 def _keyword_regex(kw: str) -> re.Pattern:
-    """Stichwort -> Regex. ``*`` am Ende = Wortanfang, sonst ganzes Wort. Kurze Woerter (<= 3 Zeichen)
-    und Woerter in Grossbuchstaben werden gross/klein genau verglichen."""
+    """Stichwort -> Regex. ``*`` am Ende = Wortanfang, sonst ganzes Wort. Woerter in Grossbuchstaben
+    und kurze Woerter mit Grossbuchstaben (``Fed``, ``AI``) werden gross/klein genau verglichen."""
     prefix = kw.endswith("*")
     word = kw[:-1] if prefix else kw
-    body = re.escape(word)
-    pat = r"(?<![\w])" + body + (r"" if prefix else r"(?![\w])")
-    exact_case = len(word) <= 3 or word.isupper()
+    pat = r"(?<![\w])" + re.escape(word) + (r"" if prefix else r"(?![\w])")
+    exact_case = word.isupper() or (len(word) <= 3 and word != word.lower())
     return re.compile(pat, 0 if exact_case else re.IGNORECASE)
 
 

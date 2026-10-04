@@ -146,6 +146,87 @@ def cmd_smoke(args=None) -> dict:
     return {"ok": all(r["ok"] is not False for r in results.values()), "sources": results}
 
 
+def _events_cfg(args):
+    from .events import load_events_config
+    return load_events_config(getattr(args, "events_config", None))
+
+
+def cmd_events_sources(args=None) -> dict:
+    from .events import source_overview
+    return {"ok": True, "sources": source_overview(_events_cfg(args))}
+
+
+def cmd_events_update(args=None) -> dict:
+    """Ereignisse aus allen (oder ausgewaehlten) Quellen holen; je Quelle ein source_run."""
+    from .events import update_events
+    from .prices import load_watchlist
+
+    cfg = _events_cfg(args)
+    wl = load_watchlist(getattr(args, "watchlist", None))
+    conn = _conn(args)
+    try:
+        return update_events(conn, cfg, wl, only=_split(getattr(args, "source", None)),
+                             full=bool(getattr(args, "full", False)))
+    finally:
+        conn.close()
+
+
+def cmd_events_show(args=None) -> dict:
+    from .events.store import query_events
+
+    conn = _conn(args)
+    try:
+        db.migrate(conn)
+        rows = query_events(conn, since=getattr(args, "since", None), until=getattr(args, "until", None),
+                            types=_split(getattr(args, "type", None)), sources=_split(getattr(args, "source", None)),
+                            symbol=getattr(args, "symbol", None), sector=getattr(args, "sector", None),
+                            include_duplicates=bool(getattr(args, "duplicates", False)),
+                            limit=int(getattr(args, "limit", None) or 30))
+        return {"ok": True, "count": len(rows), "events": rows}
+    finally:
+        conn.close()
+
+
+def cmd_events_stats(args=None) -> dict:
+    from .events.store import event_stats
+
+    conn = _conn(args)
+    try:
+        db.migrate(conn)
+        out = event_stats(conn)
+        out["politicians"] = conn.execute("SELECT COUNT(*) FROM politician").fetchone()[0]
+        out["committees"] = conn.execute("SELECT COUNT(*) FROM committee").fetchone()[0]
+        out["politician_committee"] = conn.execute("SELECT COUNT(*) FROM politician_committee").fetchone()[0]
+        return {"ok": True, **out}
+    finally:
+        conn.close()
+
+
+def cmd_events_smoke(args=None) -> dict:
+    """Live-Smoke aller Ereignisquellen gegen eine Wegwerf-DB (Default .dev/smoke/events.db).
+    Quellen ohne Schluessel melden not_configured (kein Request)."""
+    from pathlib import Path
+
+    from .events import update_events
+    from .prices import load_watchlist
+
+    target = getattr(args, "db", None) or str(Path(__file__).resolve().parent.parent / ".dev" / "smoke" / "events.db")
+    cfg = _events_cfg(args)
+    wl = load_watchlist(getattr(args, "watchlist", None))
+    conn = db.connect(target)
+    try:
+        res = update_events(conn, cfg, wl, only=_split(getattr(args, "source", None)), job="events:smoke")
+    finally:
+        conn.close()
+    slim = {k: {kk: v.get(kk) for kk in ("status", "items", "requests", "new", "duplicates", "instrument_links",
+                                          "sector_links", "error") if v.get(kk) is not None}
+            for k, v in res["sources"].items()}
+    for k, v in res["sources"].items():
+        if v.get("errors"):
+            slim[k]["errors"] = dict(list(v["errors"].items())[:3])
+    return {"ok": res["ok"], "db": target, "sources": slim}
+
+
 def cmd_test(args=None) -> dict:
     """Komplette Testsuite (unittest). Laeuft nur im Repo."""
     import os
@@ -164,14 +245,18 @@ def cmd_test(args=None) -> dict:
 
 COMMANDS = {"migrate": cmd_migrate, "status": cmd_status, "sources": cmd_sources, "watchlist": cmd_watchlist,
             "prices:update": cmd_prices_update, "prices:show": cmd_prices_show, "coverage": cmd_coverage,
-            "runs": cmd_runs, "smoke": cmd_smoke, "test": cmd_test}
+            "runs": cmd_runs, "smoke": cmd_smoke, "events:sources": cmd_events_sources,
+            "events:update": cmd_events_update, "events:show": cmd_events_show, "events:stats": cmd_events_stats,
+            "events:smoke": cmd_events_smoke, "test": cmd_test}
 ALIASES = {"db:migrate": "migrate", "prices-update": "prices:update", "prices-show": "prices:show",
-           "watchlist:sync": "watchlist"}
+           "watchlist:sync": "watchlist", "events-update": "events:update", "events-show": "events:show"}
 
 
 def setup_argparse(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--db", help="Pfad zur SQLite-DB (Default: plugin-data/hermes-trading/data.db)")
     parser.add_argument("--watchlist", help="Pfad zur Watchlist (Default: config/watchlist.json im Repo)")
+    parser.add_argument("--events-config", dest="events_config",
+                        help="Pfad zur Ereignis-Konfiguration (Default: config/events.json im Repo)")
     subs = parser.add_subparsers(dest="trading_command")
     subs.add_parser("migrate", aliases=["db:migrate"], help="Schema-Migrationen anwenden")
     subs.add_parser("status", help="Zustand: DB, Quellen, letzte Laeufe")
@@ -188,6 +273,23 @@ def setup_argparse(parser: argparse.ArgumentParser) -> None:
     p_runs = subs.add_parser("runs", help="letzte Quellen-Laeufe (source_run)")
     p_runs.add_argument("--limit", type=int, default=20)
     subs.add_parser("smoke", help="Live-Smoke: je Quelle ein Request, ohne DB")
+    subs.add_parser("events:sources", help="Ereignisquellen: Schluessel, konfiguriert, Limit, Nutzungsbedingungen")
+    p_eu = subs.add_parser("events:update", aliases=["events-update"],
+                           help="Ereignisse holen (SEC, PTR, Kongress, Notenbanken, News, Polymarket)")
+    p_eu.add_argument("--source", help="nur diese Quelle(n), kommagetrennt (siehe events:sources)")
+    p_eu.add_argument("--full", action="store_true", help="Cursor ignorieren (13F-Datensatz, Ausschuesse neu laden)")
+    p_es = subs.add_parser("events:show", aliases=["events-show"], help="gespeicherte Ereignisse anzeigen")
+    p_es.add_argument("--since", help="ab Zeitpunkt (ISO, z. B. 2026-10-01)")
+    p_es.add_argument("--until", help="bis Zeitpunkt (ISO)")
+    p_es.add_argument("--type", help="Typ(en): filing,insider,fund_holding,ptr,bill,calendar,news,prediction")
+    p_es.add_argument("--source", help="Quelle(n), kommagetrennt")
+    p_es.add_argument("--symbol", help="nur Ereignisse zu diesem Watchlist-Symbol (z. B. NVDA.US)")
+    p_es.add_argument("--sector", help="nur Ereignisse dieser Branche (config/sectors.json)")
+    p_es.add_argument("--duplicates", action="store_true", help="Duplikate mit anzeigen")
+    p_es.add_argument("--limit", type=int, default=30)
+    subs.add_parser("events:stats", help="Ereignisse je Quelle/Typ, Zuordnungsquote, Stammdaten")
+    p_esm = subs.add_parser("events:smoke", help="Live-Smoke aller Ereignisquellen in .dev/smoke/events.db")
+    p_esm.add_argument("--source", help="nur diese Quelle(n)")
     subs.add_parser("test", help="komplette Testsuite (unittest) ausfuehren")
     parser.set_defaults(func=handle)
 

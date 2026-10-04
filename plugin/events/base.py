@@ -42,7 +42,7 @@ class EventItem:
     raw: object = None
     dedup_keys: list[str] = field(default_factory=list)   # zusaetzliche Schluessel (auch gleiche Quelle)
     cross_keys: list[str] = field(default_factory=list)   # Schluessel nur gegenueber anderen Quellen
-    url_unique: bool = True                               # False: mehrere Ereignisse teilen sich die URL
+    url_key: bool = True                                  # False: URL nicht als Duplikat-Schluessel (geteilte PDFs)
 
     def validate(self) -> None:
         if self.type not in EVENT_TYPES:
@@ -100,12 +100,12 @@ class EventSource:
     max_rps: float = 1.0
     terms_url: str = ""
     limit_note: str = ""              # dokumentiertes Limit der Quelle
-    uses_http: bool = True
     priority: int = 5                 # bei Duplikaten gewinnt die hoehere Prioritaet (Primaerquelle)
 
     def __init__(self, http: HttpClient | None = None, *, api_key: str | None = None, options: dict | None = None):
         self.options = options or {}
-        self.http = http if http is not None else (HttpClient(HttpConfig.from_env(self.max_rps)) if self.uses_http else None)
+        # Auch Quellen ohne HTTP (Polymarket-DB) bekommen einen Client, damit request_count einheitlich ist.
+        self.http: HttpClient = http if http is not None else HttpClient(HttpConfig.from_env(self.max_rps))
         self._api_key = api_key
 
     @property
@@ -127,7 +127,7 @@ class EventSource:
 
     @property
     def request_count(self) -> int:
-        return self.http.request_count if self.http is not None else 0
+        return self.http.request_count
 
     def fetch(self, ctx: EventContext) -> FetchResult:  # pragma: no cover - abstrakt
         raise NotImplementedError

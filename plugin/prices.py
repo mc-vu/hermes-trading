@@ -67,6 +67,11 @@ def validate_watchlist(data: dict) -> None:
         unknown = [s for s in it["sources"] if s not in SOURCES]
         if unknown:
             raise ValueError(f"Watchlist {it['symbol']}: unbekannte Quelle(n) {unknown}")
+        if it.get("aliases") is not None and not (isinstance(it["aliases"], list)
+                                                  and all(isinstance(a, str) and a.strip() for a in it["aliases"])):
+            raise ValueError(f"Watchlist {it['symbol']}: 'aliases' muss eine Liste nicht-leerer Texte sein")
+        if it.get("cik") is not None and not str(it["cik"]).isdigit():
+            raise ValueError(f"Watchlist {it['symbol']}: 'cik' muss eine Zahl sein")
 
 
 def sync_instruments(conn: sqlite3.Connection, watchlist: dict) -> dict:
@@ -78,13 +83,15 @@ def sync_instruments(conn: sqlite3.Connection, watchlist: dict) -> dict:
         for it in watchlist["instruments"]:
             symbols.append(it["symbol"])
             conn.execute(
-                "INSERT INTO instrument(symbol, name, market, exchange, currency, asset_class, country, active,"
-                " created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
+                "INSERT INTO instrument(symbol, name, market, exchange, currency, asset_class, country, sector, cik, cusip,"
+                " aliases_json, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)"
                 " ON CONFLICT(symbol) DO UPDATE SET name=excluded.name, market=excluded.market,"
                 " exchange=excluded.exchange, currency=excluded.currency, asset_class=excluded.asset_class,"
-                " country=excluded.country, active=1, updated_at=excluded.updated_at",
+                " country=excluded.country, sector=excluded.sector, cik=excluded.cik, cusip=excluded.cusip,"
+                " aliases_json=excluded.aliases_json, active=1, updated_at=excluded.updated_at",
                 (it["symbol"], it["name"], it["market"], it.get("exchange"), it["currency"], it["asset_class"],
-                 it.get("country"), now, now))
+                 it.get("country"), it.get("sector"), it.get("cik"), it.get("cusip"),
+                 json.dumps(it["aliases"], ensure_ascii=False) if it.get("aliases") else None, now, now))
             iid = conn.execute("SELECT id FROM instrument WHERE symbol = ?", (it["symbol"],)).fetchone()[0]
             conn.execute("DELETE FROM instrument_source WHERE instrument_id = ?", (iid,))
             for src, ssym in it["sources"].items():

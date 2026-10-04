@@ -54,9 +54,9 @@ def title_fingerprint(title: str) -> str:
 def dedup_keys(item: EventItem) -> list[tuple[str, bool]]:
     """(Schluessel, nur_gegenueber_anderen_Quellen)."""
     keys: list[tuple[str, bool]] = [(k, False) for k in item.dedup_keys] + [(k, True) for k in item.cross_keys]
-    cu = canonical_url(item.url)
+    cu = canonical_url(item.url) if item.url_key else None
     if cu:
-        keys.append(("url:" + cu, not item.url_unique))
+        keys.append(("url:" + cu, False))
     if item.type in TITLE_KEY_TYPES:
         keys.append((f"title:{item.type}:{item.event_time[:10]}:{title_fingerprint(item.title)}", False))
     out, seen = [], set()

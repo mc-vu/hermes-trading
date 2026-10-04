@@ -110,19 +110,19 @@
       "categories": ["POLITICS", "ECONOMICS", "FINANCE"],
       "min_liquidity": 5000,
       "max_age_hours": 48,
-      "max_markets": 150,
+      "max_per_topic": 25,
       "topics": [
-        {"id": "fed_rates", "name": "Fed-Zinsentscheid", "keywords": ["Fed ", "Federal Reserve", "FOMC", "fed funds", "Powell"], "sectors": ["macro"], "country": "US"},
+        {"id": "fed_rates", "name": "Fed-Zinsentscheid", "keywords": ["Fed", "Federal Reserve", "FOMC", "fed funds", "Powell"], "sectors": ["macro"], "country": "US"},
         {"id": "ecb_rates", "name": "EZB-Zinsentscheid", "keywords": ["ECB", "European Central Bank", "Lagarde"], "sectors": ["macro"], "country": "EA"},
-        {"id": "other_central_banks", "name": "Andere Notenbanken", "keywords": ["Bank of England", "Bank of Japan", "BoJ", "Swiss National Bank"], "sectors": ["macro"]},
-        {"id": "us_macro", "name": "US-Konjunktur", "keywords": ["recession", "inflation", "CPI", "GDP", "unemployment", "jobs report", "tariff"], "sectors": ["macro"], "country": "US"},
-        {"id": "us_politics", "name": "US-Wahlen und Regierung", "keywords": ["Midterm", "Senate", "House", "Congress", "government shutdown", "Trump", "Presidential"], "sectors": [], "country": "US"},
-        {"id": "eu_politics", "name": "Wahlen Europa", "keywords": ["Germany", "German", "France", "French", "UK ", "Italy", "EU "], "sectors": []},
-        {"id": "conflicts", "name": "Konflikte und Geopolitik", "keywords": ["Ukraine", "Russia", "ceasefire", "Israel", "Iran", "China", "Taiwan", "invade", "invasion", "war ", "strike", "sanction", "NATO"], "sectors": ["defense"]},
-        {"id": "energy", "name": "Energie und Rohstoffe", "keywords": ["oil", "OPEC", "crude", "gas price", "gold"], "sectors": ["energy"]},
-        {"id": "crypto_policy", "name": "Krypto-Regulierung und -Preise", "keywords": ["Bitcoin", "Ethereum", "crypto", "stablecoin", "SEC "], "sectors": ["crypto"]}
+        {"id": "other_central_banks", "name": "Andere Notenbanken", "keywords": ["Bank of England", "Bank of Japan", "BoJ", "Swiss National Bank", "SNB"], "sectors": ["macro"]},
+        {"id": "us_macro", "name": "US-Konjunktur", "keywords": ["recession", "inflation", "CPI", "GDP", "unemployment", "jobs report", "tariff", "tariffs"], "sectors": ["macro"], "country": "US"},
+        {"id": "conflicts", "name": "Konflikte und Geopolitik", "keywords": ["invade", "invasion", "ceasefire", "military clash", "war", "blockade", "nuclear", "Nuke", "enriched uranium", "sanction", "sanctions", "NATO", "Ukraine", "Russia", "Iran", "Iranian", "Taiwan", "Israel"], "sectors": ["defense"]},
+        {"id": "energy", "name": "Energie und Rohstoffe", "keywords": ["oil", "Crude Oil", "OPEC", "natural gas", "gold"], "sectors": ["energy"]},
+        {"id": "crypto_policy", "name": "Krypto", "keywords": ["Bitcoin", "Ethereum", "crypto", "stablecoin"], "sectors": ["crypto"]},
+        {"id": "us_politics", "name": "US-Politik und -Wahlen", "keywords": ["Midterm", "Midterms", "Republican", "Republicans", "Democrat", "Democrats", "Trump", "U.S. Senate", "US Senate", "U.S. House", "government shutdown", "Congress", "US Presidential", "U.S. Presidential"], "sectors": [], "country": "US"},
+        {"id": "world_elections", "name": "Wahlen und Regierungen weltweit", "keywords": ["election", "Prime Minister", "presidential", "President of", "Chancellor", "Bundestag"], "sectors": []}
       ],
-      "_note": "Nur lesend (mode=ro) auf die DB des Polymarket-Plugins, keine eigenen API-Abrufe. Die Gamma-Abfragen laufen als SQL ueber die dort gespeicherten Gamma-Marktdaten."
+      "_note": "Nur lesend (mode=ro) auf die DB des Polymarket-Plugins, keine eigenen API-Abrufe. Die Gamma-Abfragen laufen als SQL ueber die dort gespeicherten Gamma-Marktdaten. Reihenfolge der topics = Prioritaet: das erste passende Thema bestimmt Typ und Land, je Thema hoechstens max_per_topic Maerkte (nach Liquiditaet)."
     }
   }
 }

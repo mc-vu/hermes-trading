@@ -79,14 +79,17 @@ class DbTestCase(unittest.TestCase):
 
 class SchemaTest(DbTestCase):
     def test_migrate_idempotent_and_tables(self):
-        self.assertEqual(db.migrate(self.conn), ["001_init.sql"])
+        self.assertEqual(db.migrate(self.conn), ["001_init.sql", "002_events.sql"])
         self.assertEqual(db.migrate(self.conn), [])
-        self.assertEqual(db.current_version(self.conn), 1)
+        self.assertEqual(db.current_version(self.conn), 2)
         tables = set(db.counts(self.conn))
-        for t in ("instrument", "instrument_source", "price_bar", "fx_rate", "source_run", "schema_migrations"):
+        for t in ("instrument", "instrument_source", "price_bar", "fx_rate", "source_run", "schema_migrations",
+                  "event", "event_key", "event_instrument", "event_sector", "politician", "committee",
+                  "politician_committee", "source_cursor"):
             self.assertIn(t, tables)
         cols = {r[1] for r in self.conn.execute("PRAGMA table_info(instrument)")}
-        self.assertTrue({"symbol", "market", "exchange", "currency", "asset_class"} <= cols)
+        self.assertTrue({"symbol", "market", "exchange", "currency", "asset_class", "sector", "cik", "cusip",
+                         "aliases_json"} <= cols)
 
     def test_split_sql_rejects_incomplete(self):
         with self.assertRaises(ValueError):
@@ -279,7 +282,7 @@ class CliTest(unittest.TestCase):
     def test_migrate_status_sources(self):
         rc, out = self.run_cli("migrate")
         self.assertEqual(rc, 0)
-        self.assertEqual(json.loads(out)["schema_version"], 1)
+        self.assertEqual(json.loads(out)["schema_version"], 2)
         rc, out = self.run_cli("status")
         data = json.loads(out)
         self.assertTrue(data["read_only"])
