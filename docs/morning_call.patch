@@ -1,0 +1,17 @@
+--- a/morning_call.sh
++++ b/morning_call.sh
+@@ -133,6 +133,14 @@
+ PM=$(timeout 60 "$HOME/.local/bin/hermes" polymarket report --morning 2>/dev/null | head -n 15)
+ echo "${PM:-Polymarket-Bericht nicht verfügbar (Plugin aktiv? hermes polymarket status)}"
+ 
++echo; echo "=== LAGEBILD MÄRKTE (keine Anlageberatung) ==="
++# Taegliches Lagebild aus der Plugin-DB von hermes-trading: hoechstens 20 Zeilen, jede mit Quelle.
++# Ein LLM-Aufruf pro Tag ueber ctx.llm, sonst regelbasiert. Depot nur in Prozent (Text geht an das LLM).
++# Daten vorher per Cron holen (prices:update, events:update), hier keine Abrufe.
++# Fehler (Plugin nicht aktiv, DB fehlt) werden als eine Zeile gemeldet, der Morning Call laeuft weiter.
++TR=$(timeout 180 "$HOME/.local/bin/hermes" trading report --morning 2>/dev/null | head -n 20)
++echo "${TR:-Lagebild nicht verfügbar (Plugin aktiv? hermes trading status)}"
++
+ # Exa-Verbrauch: nur montags (lokale Log-Zaehlung, kein API-Aufruf)
+ if [ "$(date +%u)" = "1" ]; then
+   echo; timeout 60 "$HOME/.hermes/scripts/exa_usage.sh" 2>/dev/null || echo "=== EXA VERBRAUCH === nicht ermittelbar"

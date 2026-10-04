@@ -278,7 +278,10 @@ def cmd_report(args=None) -> dict:
             return _morning_error(exc)
         raise
     try:
-        b = build_briefing(conn, now=now, llm=BRIEFING_LLM, use_llm=not getattr(args, "no_llm", False))
+        # --morning geht ueber den Cron-Agenten (LLM) weiter -> nur Prozente; Betraege nur lokal (--text).
+        amounts = not morning or bool(getattr(args, "amounts", False))
+        b = build_briefing(conn, now=now, llm=BRIEFING_LLM, use_llm=not getattr(args, "no_llm", False),
+                           amounts=amounts)
         bid = None if getattr(args, "no_save", False) else save_briefing(
             conn, b, delivered_via="morning_call" if morning else None)
         out = {"ok": True, "briefing_id": bid, "generator": b["generator"], "llm_status": b["llm_status"],
@@ -365,8 +368,11 @@ def setup_argparse(parser: argparse.ArgumentParser) -> None:
     p_esm = subs.add_parser("events:smoke", help="Live-Smoke aller Ereignisquellen in .dev/smoke/events.db")
     p_esm.add_argument("--source", help="nur diese Quelle(n)")
     p_rep = subs.add_parser("report", help="taegliches Lagebild (nur DB, keine Abrufe); speichert in daily_briefing")
-    p_rep.add_argument("--morning", action="store_true", help="nur Text (<= 20 Zeilen) fuer den Morning Call")
-    p_rep.add_argument("--text", action="store_true", help="nur Text statt JSON")
+    p_rep.add_argument("--morning", action="store_true",
+                       help="nur Text (<= 20 Zeilen) fuer den Morning Call, Depot nur in Prozent")
+    p_rep.add_argument("--text", action="store_true", help="nur Text statt JSON (lokal, mit Euro-Betraegen)")
+    p_rep.add_argument("--betraege", dest="amounts", action="store_true",
+                       help="mit --morning trotzdem Euro-Betraege zeigen (nur fuer lokale Ansicht)")
     p_rep.add_argument("--no-llm", dest="no_llm", action="store_true", help="nur regelbasiert, kein LLM-Aufruf")
     p_rep.add_argument("--no-save", dest="no_save", action="store_true", help="nicht in daily_briefing speichern")
     p_rep.add_argument("--now", help="Bezugszeitpunkt ISO mit Zeitzone (Tests/Beispiele), Default jetzt")

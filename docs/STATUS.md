@@ -1,6 +1,73 @@
 # STATUS – hermes-trading
 
-Stand: 04.10.2026 · Phasen T1–T3 (Gerüst, Kurse, Ereignisse, Depots lesen) · nur lesend, keine echten Orders
+Stand: 04.10.2026 · Phasen T1–T4 (Gerüst, Kurse, Ereignisse, Depots lesen, Lagebild) · nur lesend, keine echten Orders
+
+## Lagebild (T4)
+
+`hermes trading report --morning` erzeugt das tägliche Lagebild nach dem Muster „Was ist passiert → wen
+betrifft es → was heißt das für die Depots“ (Code `plugin/briefing.py`, Tabelle `daily_briefing`,
+Migration `004_briefing.sql`). Beispiel auf echten Quelldaten: `docs/BRIEFING_BEISPIEL.md`.
+Morning-Call-Einbau als Patch-Vorschlag (nicht eingebaut): `docs/MORNING_CALL.md`.
+
+- **Auswahl:** Ereignisse der letzten 24 h (News, Filings, Gesetze, Polymarket) mit Link, bewertet nach
+  Betroffenheit (Depotwert > Watchlist > gleiche Branche > Makro), Positionsgröße, Quellenpriorität und
+  Neuigkeit; höchstens 8, Polymarket höchstens 2, RSS höchstens 3. Termine der nächsten 7 Tage (FOMC, EZB,
+  Konjunktur; Quartalszahlen nur für Depotwerte). Signale: Form 4, PTR, 13F der letzten 7 Tage zu Depot- und
+  Watchlist-Werten, Trades einer Meldung zum selben Wert zusammengefasst, immer mit Meldeverzug
+  (Trade-/Stichtag → Meldedatum) und einer Hinweiszeile zu den Meldefristen.
+- **Depotteil:** immer regelbasiert, nie vom LLM: Wert, Veränderung zum Vortag (je Depot, gesamt), stärkster
+  und schwächster Wert, Konzentration (Einzelwert > 20 %, Branche/Land/Fremdwährung > 50 %), Werte ohne Kurs.
+- **Ausgabe:** höchstens 20 Zeilen, Kopfzeile `LAGEBILD · keine Anlageberatung · <Datum>`, jede weitere Zeile
+  mit Quelle als Kurzlink. Zeilen ohne Quelle werden vor der Ausgabe entfernt. Keine Netzabrufe; Daten vorher
+  per `prices:update`/`events:update` holen. Ist das jüngste Ereignis älter als 36 h, sagt das die Kopfzeile.
+- **LLM (Entscheidung MCVu 03.10.2026):** Ereignis-, Termin- und Signalzeilen schreibt das LLM über
+  `ctx.llm.complete` (aktives Modell, keine Overrides), höchstens ein Aufruf pro Kalendertag. Die Antwort ist
+  JSON `{"zeilen": [{"text", "quellen": ["E1", …]}]}`. Verworfen werden Zeilen ohne gültige Quellen-ID aus den
+  gelieferten Ereignissen, mit Empfehlungsformulierung (kaufen/verkaufen/halten, Kursziel …) oder mit
+  Euro-Betrag. Fallback auf die Regeln bei: kein `ctx.llm` (z. B. `python -m plugin`), Fehler/Timeout/Limit
+  des Providers, kein JSON, keine gültige Zeile, Tagesaufruf schon verbraucht. Status je Lauf in
+  `daily_briefing.llm_status` (`ok | error | no_valid_lines | not_available | disabled | daily_limit`),
+  verworfene Zeilen mit Grund in `llm_dropped_json`.
+
+### Datenschutz: was das LLM sieht
+
+Echte Beträge und Bestände erscheinen nur lokal (CLI-Ausgabe ohne `--morning`, Plugin-DB). Ans LLM geht nur
+`briefing.llm_payload()`:
+
+| geht ans LLM | geht nicht ans LLM |
+|---|---|
+| Ereignisse/Termine/Signale: Titel, Auszug, Zeit, Quelle, verknüpfte Werte/Branchen, Quellen-ID | URLs (nur IDs; die Zuordnung ID → Link bleibt lokal) |
+| je Wert über alle Depots: Symbol, Gewicht in ganzen Prozent, Vortag in Prozent (1 Nachkommastelle), seit Einstand in ganzen Prozent | Euro-Beträge (Wert, Einstand, Gewinn), Stückzahlen |
+| Assetklasse, Branche, Land, Währung des Werts | Depotnamen (scalable, binance, …), Positionsnamen aus der Bestandsdatei |
+| Depot gesamt: Vortag in Prozent, Konzentrationshinweise in Prozent, Symbole ohne Kurs | Kaufdaten, ISIN-Zuordnung der Bestandsdatei |
+
+`report --morning` (Morning Call) zeigt das Depot ebenfalls nur in Prozent, weil der Morning-Call-Agent den
+Text an sein LLM gibt; Beträge zeigt `report --text` bzw. `report --morning --betraege` lokal.
+Geprüft in `tests/test_briefing.py::LlmTest::test_privacy_payload_is_aggregated_percent_only` (auffällige
+Stückzahlen, Einstände, Positions- und Depotnamen dürfen im gesendeten Prompt nicht vorkommen; nur die
+erlaubten Felder, Prozente gerundet) und `OutputTest::test_saved_in_daily_briefing_and_cli_morning`
+(kein „€“ und keine Beträge in der Morning-Ausgabe). Live geprüft am 04.10.2026: gesendeter Prompt
+(`.dev/smoke/t4-llm-sent.json`) ohne „€“, Beträge, Depot- und Positionsnamen.
+
+### T4-Tests und Einschränkungen
+
+`~/.local/bin/hermes-python -m unittest discover -s tests -t .`: 141 Tests, OK. Neu in
+`tests/test_briefing.py` (18): Auswahl (Rangfolge, 24-h-Fenster, Link-Pflicht, Termine 7 Tage, Quartalszahlen
+nur Depot, Signale nur Depot/Watchlist mit Verzug und Zusammenfassung), Depotteil, Zeilenlimit, Quellenpflicht
+(auch für LLM-Zeilen: ohne/unbekannte/fremde Quelle verworfen), Empfehlungs- und Eurobetrag-Filter,
+Datenschutz-Aggregation, Fallback ohne LLM und bei Fehlern, Tageslimit, Speichern in `daily_briefing`,
+Fehlerzeile im Morning-Modus, Verdrahtung `register()` → `ctx.llm.complete`.
+
+Live: Regelpfad über die CLI und LLM-Pfad über `agent.plugin_llm.PluginLlm` (Klasse hinter `ctx.llm`,
+Modell anthropic/claude-opus-5-5) auf `.dev/smoke/t4-briefing.db`. Nicht getestet: Aufruf innerhalb des
+aktivierten Plugins (Plugin ist laut Auftrag nicht aktiviert) und der Morning-Call-Einbau selbst.
+
+Einschränkungen:
+- Kein Earnings-Kalender konfiguriert; Quartalszahlen-Termine erscheinen erst, wenn eine Quelle
+  `calendar`/`earnings` liefert (z. B. Finnhub mit Schlüssel, nicht gebaut).
+- Ohne Stooq-Schlüssel keine Kurse für Aktien/ETFs: solche Positionen stehen im Depotteil unter „ohne Kurs“.
+- Betroffenheit über Branche ist grob (gleiche `sector`-ID); Makro-Ereignisse gelten als indirekt für alle.
+- Der Empfehlungsfilter ist eine Wortliste; er fängt typische Formulierungen, keine Umschreibungen.
 
 ## Kurzfassung
 

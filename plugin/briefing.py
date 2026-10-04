@@ -88,7 +88,7 @@ def short_link(src: str) -> str:
     s = re.sub(r"^https?://", "", src.strip())
     s = re.sub(r"^www\.", "", s)
     host, _, rest = s.partition("/")
-    rest = re.sub(r"/{2,}", "/", rest).rstrip("/")
+    rest = re.sub(r"/{2,}", "/", rest).strip("/")
     return host + ("/" + rest if rest else "")
 
 
@@ -202,7 +202,9 @@ def concentration(view: dict) -> list[str]:
     labels = {"sector": "Branche", "country": "Land", "currency": "Währung"}
     for key, label in labels.items():
         for k, v in (view.get("allocation") or {}).get(key, {}).items():
-            if k != "unknown" and v > GROUP_LIMIT_PCT:
+            if k == "unknown" or (key == "currency" and k == "EUR"):
+                continue        # EUR ist Heimatwaehrung, kein Waehrungsrisiko
+            if v > GROUP_LIMIT_PCT:
                 out.append(f"{label} {k} {share(v)}")
     return out
 
@@ -339,7 +341,15 @@ def select_signals(conn, view: dict, watch: set[str], now: datetime, limit: int 
         ev["score"] = _signal_score(ev, held)
         out.append(ev)
     out.sort(key=lambda e: (-e["score"], e["event_time"]))
-    return out[:limit]
+    # Mehrere Trades einer Meldung zum selben Wert (z. B. zwei Teilverkaeufe in einer PTR) = ein Signal.
+    merged: dict[tuple, dict] = {}
+    for ev in out:
+        key = (ev["url"], tuple(sorted(ev["instruments"])))
+        if key in merged:
+            merged[key]["more"] = merged[key].get("more", 0) + 1
+        else:
+            merged[key] = ev
+    return list(merged.values())[:limit]
 
 
 def delay_text(ev: dict) -> str:
@@ -443,7 +453,8 @@ def signal_lines(data: dict) -> list[Line]:
     for ev in data["signals"]:
         who = "Depot " + ", ".join(ev["affects"]) if ev["affects"] else "Watchlist " + ", ".join(ev["watch"])
         kind = {"insider": "Insider", "ptr": "Politiker", "fund_holding": "13F"}[ev["type"]]
-        lines.append(Line(f"Signal {kind} ({who}): {clip(ev['title'], 100)} · {delay_text(ev)}", [ev["url"]],
+        more = f" (+{ev['more']} weitere Trades derselben Meldung)" if ev.get("more") else ""
+        lines.append(Line(f"Signal {kind} ({who}): {clip(ev['title'], 100)}{more} · {delay_text(ev)}", [ev["url"]],
                           "signal"))
     if data["signals"]:
         lines.append(Line(DELAY_NOTE, list(DELAY_SOURCES), "note"))
@@ -503,9 +514,11 @@ SYSTEM_PROMPT = (
     "Du schreibst ein kurzes Markt-Lagebild auf Deutsch für einen Privatanleger. Muster: Was ist passiert, "
     "wen betrifft es, was heißt das für die Depotwerte. Nur Fakten aus den gelieferten Daten. Keine Kauf-, "
     "Verkaufs- oder Halteempfehlung, keine Kursziele, keine Prognosen als Tatsache. Depotdaten nur in Prozent "
-    "nennen. Jede Zeile braucht mindestens eine Quellen-ID aus ereignisse/termine/signale (z. B. E1, T2, S1); "
-    "Zeilen ohne passende Quelle werden verworfen. Bei Signalen den Meldeverzug nennen. Antworte nur mit JSON: "
-    '{"zeilen": [{"text": "...", "quellen": ["E1"]}]}')
+    "nennen. Depotwert, Vortag und Konzentration stehen schon im Bericht: nicht wiederholen. Eine Zeile je "
+    "Ereignis, Termin oder Signal; keine Zusammenfassungs- oder Füllzeilen ohne neue Information. Jede Zeile "
+    "braucht mindestens eine Quellen-ID aus ereignisse/termine/signale (z. B. E1, T2, S1), und zwar die, aus der "
+    "die Aussage stammt; Zeilen ohne passende Quelle werden verworfen. Bei Signalen den Meldeverzug nennen. "
+    'Antworte nur mit JSON: {"zeilen": [{"text": "...", "quellen": ["E1"]}]}')
 
 
 def llm_messages(payload: dict, max_lines: int) -> list[dict]:
