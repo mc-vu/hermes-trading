@@ -79,9 +79,9 @@ class DbTestCase(unittest.TestCase):
 
 class SchemaTest(DbTestCase):
     def test_migrate_idempotent_and_tables(self):
-        self.assertEqual(db.migrate(self.conn), ["001_init.sql", "002_events.sql"])
+        self.assertEqual(db.migrate(self.conn), ["001_init.sql", "002_events.sql", "003_portfolio.sql"])
         self.assertEqual(db.migrate(self.conn), [])
-        self.assertEqual(db.current_version(self.conn), 2)
+        self.assertEqual(db.current_version(self.conn), 3)
         tables = set(db.counts(self.conn))
         for t in ("instrument", "instrument_source", "price_bar", "fx_rate", "source_run", "schema_migrations",
                   "event", "event_key", "event_instrument", "event_sector", "politician", "committee",
@@ -282,7 +282,7 @@ class CliTest(unittest.TestCase):
     def test_migrate_status_sources(self):
         rc, out = self.run_cli("migrate")
         self.assertEqual(rc, 0)
-        self.assertEqual(json.loads(out)["schema_version"], 2)
+        self.assertEqual(json.loads(out)["schema_version"], 3)
         rc, out = self.run_cli("status")
         data = json.loads(out)
         self.assertTrue(data["read_only"])

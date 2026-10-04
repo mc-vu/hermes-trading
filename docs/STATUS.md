@@ -165,7 +165,29 @@ FOMC, EZB, Eurostat, RSS und Polymarket-DB. SEC, Congress.gov, FRED und News-API
 Quellen: https://help.revolut.com/en-EE/help/profile-and-plan/managing-my-account/cryptocurrency-statement/ ·
 https://developer.revolut.com/docs/api/revolut-x-crypto-exchange
 
-### T2-Tests
+#### T3 – Depotdatei und Binance (nur lesend)
+
+Scalable, Revolut-App-Krypto und weitere Depots werden über eine lokal gepflegte CSV gelesen. Der Revolut-Krypto-Statement-Export ist kein bestätigter Bestands-CSV-Export; Positionen daraus lokal übernehmen und gegen die App abgleichen. Keine Revolut-Zugangsdaten einrichten.
+
+1. Vorlage `portfolio/holdings.example.csv` enthält ausschließlich gekennzeichnete Beispieldaten.
+2. `portfolio/private/` ist in `.gitignore`. Datei anlegen: `mkdir -p portfolio/private && cp portfolio/holdings.example.csv portfolio/private/holdings.csv`.
+3. Beispielzeilen in der privaten Datei ersetzen. Spalten: `depot,isin,symbol,name,menge,einstand_eur,waehrung,kaufdatum`; Kaufdatum darf leer sein. ISIN-Mappings stehen in `config/isin_symbols.json`.
+4. Import und lokale Bewertung: `~/.local/bin/hermes-python -m plugin --db .dev/data.db portfolio:import` und danach `~/.local/bin/hermes-python -m plugin --db .dev/data.db portfolio:value`. Bestände und Beträge nur lokal in der Ausgabe/Plugin-DB.
+
+#### Binance-Schlüssel mit minimalen Rechten
+
+1. In Binance neuen API-Schlüssel anlegen; IP-Beschränkung für den eigenen Zugriff aktivieren, wenn passend.
+2. Nur Lesen aktivieren. Spot-Handel, Margin/Futures-Handel, Auszahlungen, Transfers und alle anderen Schreibrechte deaktiviert lassen.
+3. Schlüsselwerte ausschließlich lokal in `~/.hermes/.env` als `BINANCE_API_KEY=…` und `BINANCE_API_SECRET=…` setzen. Nicht in Chat, Repo oder Logs.
+4. Der Adapter fragt zuerst `GET /sapi/v1/account/apiRestrictions` ab; bei erlaubtem Handel oder Auszahlung bricht er mit `Schlüssel hat zu viele Rechte` ab. Nur dann folgt `GET /api/v3/account` für Bestände. Beide Requests sind GET und HMAC-signiert; es gibt keinen Order-, Auszahlungs- oder Transfer-Code.
+
+Der Binance-Adapter `plugin.binance_account.BinanceAccount.read_balances()` ist noch nicht an die CLI angeschlossen. Es wird kein Schlüssel erstellt/geändert. `HTR_PAPER_CAPITAL_EUR` konfiguriert das nur initialisierte Paper-Depot (Standard 10.000 EUR); keine Paper-Transaktionen in T3.
+
+### T3-Tests und Einschränkungen
+
+Portfolioimport, FX-Umrechnung, Vortragsvergleich, Snapshots, Paper-Initialisierung sowie gemockte Binance-Rechteprüfung werden automatisiert getestet. Binance-Kontozugriff wurde nicht live getestet, da dafür MCVu's read-only API-Schlüssel erforderlich wäre. Die Bewertung hängt von gespeicherten Kursen und Wechselkursen ab; fehlende FX-Kurse brechen mit Fehler ab, fehlende Positionkurse werden ausgelassen.
+
+## T2-Tests
 
 `~/.local/bin/hermes-python -m unittest discover -s tests -t .`: 115 Tests, OK.
 Abgedeckt sind Parser/Mock-Antworten, Fehlerpfade, Duplikate, Instrument-/Branchenzuordnung,

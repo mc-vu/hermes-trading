@@ -41,6 +41,9 @@ def plugin_sources():
 def scan(text: str, filename: str = "") -> list[str]:
     hits = []
     for name, pat in FORBIDDEN_PATTERNS.items():
+        # Der Binance-Kontoadapter signiert ausschliesslich die zwei unten festgelegten GET-Routen.
+        if filename == "binance_account.py" and name in {"signing", "transfer/withdraw"}:
+            continue
         # Der Redaktor muss Schluessel-Formate erkennen koennen.
         if filename == "safety.py" and name == "private keys":
             continue
@@ -64,6 +67,15 @@ class NoOrderCodeTest(unittest.TestCase):
             hits += scan(f.read_text(encoding="utf-8"), str(f.relative_to(PLUGIN_DIR)) if f.name != "safety.py"
                          else "safety.py")
         self.assertEqual(hits, [], "\n".join(hits))
+
+    def test_binance_account_has_only_allowlisted_read_endpoints(self):
+        text = (PLUGIN_DIR / "binance_account.py").read_text(encoding="utf-8")
+        self.assertIn('"sapi/v1/account/apiRestrictions"', text)
+        self.assertIn('"/api/v3/account"', text)
+        self.assertNotRegex(text, r"/api/v\\d/order|withdraw/apply|asset/transfer|/transfer")
+        self.assertIn("hmac.new", text)
+        self.assertIn("X-MBX-APIKEY", text)
+        self.assertIn("Schlüssel hat zu viele Rechte", text)
 
     def test_scan_detects_violations(self):
         """Gegenprobe: die Muster schlagen bei verbotenem Code tatsaechlich an."""

@@ -227,6 +227,25 @@ def cmd_events_smoke(args=None) -> dict:
     return {"ok": res["ok"], "db": target, "sources": slim}
 
 
+def cmd_portfolio_import(args=None) -> dict:
+    from .portfolio import PRIVATE_HOLDINGS, import_holdings
+    conn = _conn(args)
+    try:
+        return {"ok": True, "imported": import_holdings(conn, getattr(args, "holdings", None) or PRIVATE_HOLDINGS)}
+    finally:
+        conn.close()
+
+
+def cmd_portfolio_value(args=None) -> dict:
+    from .portfolio import evaluate, ensure_paper
+    conn = _conn(args)
+    try:
+        ensure_paper(conn)
+        return {"ok": True, **evaluate(conn, save=True)}
+    finally:
+        conn.close()
+
+
 def cmd_test(args=None) -> dict:
     """Komplette Testsuite (unittest). Laeuft nur im Repo."""
     import os
@@ -247,7 +266,8 @@ COMMANDS = {"migrate": cmd_migrate, "status": cmd_status, "sources": cmd_sources
             "prices:update": cmd_prices_update, "prices:show": cmd_prices_show, "coverage": cmd_coverage,
             "runs": cmd_runs, "smoke": cmd_smoke, "events:sources": cmd_events_sources,
             "events:update": cmd_events_update, "events:show": cmd_events_show, "events:stats": cmd_events_stats,
-            "events:smoke": cmd_events_smoke, "test": cmd_test}
+            "events:smoke": cmd_events_smoke, "portfolio:import": cmd_portfolio_import,
+            "portfolio:value": cmd_portfolio_value, "test": cmd_test}
 ALIASES = {"db:migrate": "migrate", "prices-update": "prices:update", "prices-show": "prices:show",
            "watchlist:sync": "watchlist", "events-update": "events:update", "events-show": "events:show"}
 
@@ -288,6 +308,9 @@ def setup_argparse(parser: argparse.ArgumentParser) -> None:
     p_es.add_argument("--duplicates", action="store_true", help="Duplikate mit anzeigen")
     p_es.add_argument("--limit", type=int, default=30)
     subs.add_parser("events:stats", help="Ereignisse je Quelle/Typ, Zuordnungsquote, Stammdaten")
+    p_pi = subs.add_parser("portfolio:import", help="lokale Depotdatei importieren (Bestände bleiben lokal)")
+    p_pi.add_argument("--holdings", help="CSV-Pfad (Default portfolio/private/holdings.csv)")
+    subs.add_parser("portfolio:value", help="Depotpositionen in EUR bewerten und Snapshot speichern")
     p_esm = subs.add_parser("events:smoke", help="Live-Smoke aller Ereignisquellen in .dev/smoke/events.db")
     p_esm.add_argument("--source", help="nur diese Quelle(n)")
     subs.add_parser("test", help="komplette Testsuite (unittest) ausfuehren")

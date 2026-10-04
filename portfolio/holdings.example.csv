@@ -1,0 +1,5 @@
+# BEISPIELDATEN – durch eigene Werte ersetzen; niemals diese Datei mit echten Beständen committen.
+depot,isin,symbol,name,menge,einstand_eur,waehrung,kaufdatum
+scalable,IE00B4L5Y983,EUNL.DE,Beispiel MSCI World ETF,2,200.00,EUR,2024-01-15
+binance,,BTC,Beispiel Bitcoin,0.01,500.00,EUR,2024-02-01
+revolut,,ETH,Beispiel Ether,0.1,250.00,EUR,
