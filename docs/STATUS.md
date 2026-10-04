@@ -108,3 +108,65 @@ cd ~/projects/hermes-trading
 - `tests/test_safety.py::test_no_order_code` scannt alles unter `plugin/`. Für T3 (Binance-Konto, signiert)
   muss der Test bewusst erweitert werden: Signatur nur für die erlaubten Konto-Endpunkte, Order-/Auszahlungs-
   endpunkte bleiben verboten.
+
+## Ereignisquellen (T2)
+
+Die Ereignisse liegen in `event`; Verknüpfungen stehen in `event_instrument` und `event_sector`.
+Jeder Adapterlauf wird in `source_run` protokolliert (`ok`, `partial`, `error`, `not_configured`).
+Ticker/Firmennamen werden gegen Watchlist und `config/sectors.json` abgeglichen; Ausschuss-Zuordnungen
+werden aus Politiker-/Ausschuss-Stammdaten verknüpft. Duplikate bleiben nachvollziehbar, werden aber
+standardmäßig bei `events:show` ausgeblendet.
+
+### Quellstatus, Schlüssel und Limits
+
+Live-Smoke am 04.10.2026 mit `hermes trading events:smoke` in `.dev/smoke/events-task.db`.
+„OK“ bezeichnet den tatsächlichen Smoke-Lauf. Nicht konfigurierte Quellen haben keinen Request gesendet.
+
+| Quelle | Status | Schlüssel nötig | Limit / Laufverhalten |
+|---|---|---|---|
+| SEC EDGAR 8-K/Form 4 | nicht konfiguriert | `SEC_CONTACT_EMAIL` | max. 5 Requests/s im Code (SEC Fair Access max. 10/s); Watchlist-Emittenten |
+| SEC 13F | nicht konfiguriert | `SEC_CONTACT_EMAIL` | max. 5 Requests/s; Quartals-ZIP nur für konfigurierte Manager |
+| Tracefour Form 4 | OK | nein | anonym 60 Requests/Stunde je IP (PTR teilt Kontingent); im Smoke 5 Requests |
+| Tracefour PTR | OK | nein | anonym 60 Requests/Stunde je IP; im Smoke 20 Requests |
+| House Clerk PTR-Index | OK | nein | im Smoke 1 ZIP pro Jahr; als Abgleich, keine Senate-eFD-Abrufe |
+| Congress.gov Gesetzentwürfe | nicht konfiguriert | `CONGRESS_API_KEY` | Code-Limit 1 Request/s; laut API 5.000 Requests/Stunde je Schlüssel |
+| Politiker-/Ausschuss-Stammdaten | OK | nein | im Smoke 3 Dateien, höchstens einmal täglich; CC0-Projekt |
+| FOMC-Kalender | OK | nein | im Smoke 1 Request |
+| EZB-Kalender | OK | nein | 1 Request/Lauf, mindestens 5 s Abstand (robots.txt Crawl-delay) |
+| Eurostat-Kalender | OK | nein | im Smoke 1 ICS-Request; Kalender laut Quelle 2x täglich aktualisiert |
+| FRED-Veröffentlichungen | nicht konfiguriert | `FRED_API_KEY` | 120 Requests/Minute je Schlüssel; im Adapter 1 Request/Lauf |
+| MarketAux News | nicht konfiguriert | `MARKETAUX_API_KEY` | Free: 100 Requests/Tag, max. 3 Artikel/Request |
+| Finnhub News | nicht konfiguriert | `FINNHUB_API_KEY` | Free: 60 Calls/Minute; im Adapter höchstens 1/s |
+| RSS: Federal Reserve | OK | nein | 1 Request/Feed/Lauf; Feedreader-Feed, Inhalte gemeinfrei, Quelle angeben |
+| RSS: EZB | OK | nein | 1 Request/Feed/Lauf; Crawl-delay 5 s, eingehalten |
+| RSS: Bundesbank | OK | nein | 1 Request/Feed/Lauf; Crawl-delay 10 s, eingehalten |
+| Polymarket-Plugin-DB | OK | nein | 0 Netzwerk-Requests; SQLite ausschließlich `mode=ro` |
+
+Die RSS-Feed-Auswahl und die jeweilige Prüfung/Begründung stehen in `config/events.json` bei `sources.rss.feeds`.
+Dort sind auch abgelehnte Feeds mit Grund dokumentiert. Polymarket-Weltereignisse werden aus den im Plugin
+bereits gespeicherten Gamma-Marktdaten gelesen; es gibt keine eigenen Gamma-API-Abrufe.
+
+Smoke-Zusammenfassung: OK bei Politiker-/Ausschuss-Stammdaten, Tracefour (Form 4 und PTR), House Clerk,
+FOMC, EZB, Eurostat, RSS und Polymarket-DB. SEC, Congress.gov, FRED und News-APIs: `not_configured`,
+0 Requests. Keine Schlüsselwerte wurden ausgegeben.
+
+### Revolut-Krypto-Bestand (Exa-Recherche, 04.10.2026)
+
+- Der Revolut-App-Hilfetext beschreibt einen Krypto-Statement-Export in der App: Crypto → More → Documents;
+  Dokumenttyp und Zeitraum wählen, dann „Generate“. Laut Hilfe enthält das Statement alle Krypto-Transaktionen
+  und persönliche Kontodaten; es ist daher vor Ablage/Import lokal zu prüfen und zu bereinigen. Es ist kein
+  bestätigter direkter Bestands-CSV-Export.
+- Revolut X dokumentiert separat eine authentifizierte REST-API mit „Get balances“. Diese API gehört zum
+  Revolut-X-Krypto-Exchange und ist nicht als API für den Krypto-Bestand eines normalen Revolut-App-Kontos
+  bestätigt. Keine API-Schlüssel erstellt oder verwendet.
+- Empfehlung für T3: zuerst den manuellen Statement-Export lokal prüfen; Bestände ggf. aus Transaktionen
+  rekonstruieren und zum Stichtag gegen die App abgleichen. Keine Broker-Credentials ins Repo oder Chat.
+
+Quellen: https://help.revolut.com/en-EE/help/profile-and-plan/managing-my-account/cryptocurrency-statement/ ·
+https://developer.revolut.com/docs/api/revolut-x-crypto-exchange
+
+### T2-Tests
+
+`~/.local/bin/hermes-python -m unittest discover -s tests -t .`: 115 Tests, OK.
+Abgedeckt sind Parser/Mock-Antworten, Fehlerpfade, Duplikate, Instrument-/Branchenzuordnung,
+`source_run`, SEC-Limit und fehlende Schlüssel sowie read-only-Zugriff auf die Polymarket-DB.
